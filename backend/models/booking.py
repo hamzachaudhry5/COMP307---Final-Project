@@ -41,6 +41,7 @@ class BookingSlotBase(SQLModel):
     end_time: datetime
     is_recurring: bool = False
     recurrence_weeks: Optional[int] = Field(default=None, ge=1, le=52)
+    max_participants: int = Field(default=1, ge=1)
 
 
 class BookingSlot(BookingSlotBase, table=True):
