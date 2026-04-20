@@ -1,6 +1,28 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 function LoginPage() {
+    const { login } = useAuth();
+    const navigate = useNavigate();
+
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    async function handleSubmit(e) {
+        e.preventDefault();
+
+        // UX Check
+        if(!email.endsWith("@mcgill.ca") && !email.endsWith("@mail.mcgill.ca")) {
+            alert("Please use a valid Mcgill email.")
+            return;
+        }
+
+        //backend response
+
+        navigate("/");
+    }
+
     return (
         <div>
             <header className="navbar">
@@ -17,14 +39,26 @@ function LoginPage() {
 
             <main className="login-page">
                 <section className="login-panel">
-                    <h1 className="login-title">Login Page</h1>
-                    <p className="login-message">Please sign in with your McGill email to log in.</p>
+                    <h1 className="login-title">Login</h1>
+                    <p className="login-message">Please use your McGill email to log in.</p>
                     <form className="login-form">
                         <label htmlFor="username">McGill Email:</label>
-                        <input type="email" id="username" name="username" required />
+                        <input 
+                            type="email" 
+                            id="username" 
+                            name="username" 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required />
 
                         <label htmlFor="password">Password:</label>
-                        <input type="password" id="password" name="password" required />
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required />
                         
                         <button className="submit-button" type="submit">Login</button>
                     </form>
