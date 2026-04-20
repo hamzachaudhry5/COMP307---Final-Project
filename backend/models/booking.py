@@ -189,8 +189,9 @@ class GroupVoteCreate(SQLModel):
 class MeetingRequestBase(SQLModel):
     owner_id: int
     message: Optional[str] = Field(default=None, max_length=1000)
-    proposed_time: Optional[datetime] = None
-
+    start_time: datetime
+    end_time: datetime
+    
 
 class MeetingRequest(MeetingRequestBase, table=True):
     __tablename__ = "meeting_requests"
