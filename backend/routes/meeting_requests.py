@@ -110,7 +110,7 @@ def accept_request(
         body=(
             f"Hi {requester.first_name},\n\n"
             f"Great news — {owner.first_name} {owner.last_name} has accepted your meeting request.\n\n"
-            f"Scheduled time: {req.start_time.strftime('%B %d, %Y at %H:%M')} to {req.end_time.stendrftime('%B %d, %Y at %H:%M')}\n\n"
+            f"Scheduled time: {req.start_time.strftime('%B %d, %Y at %H:%M')} to {req.end_time.strftime('%B %d, %Y at %H:%M')}\n\n"
             f"The appointment will appear on your dashboard."
         ),
     )

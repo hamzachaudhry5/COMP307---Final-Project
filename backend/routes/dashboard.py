@@ -8,6 +8,7 @@ from models.booking import (
     ReservationRead,
     ReservationStatus,
     RequestStatus,
+    SlotStatus
 )
 from models.users import User, UserRole
 from database.session import get_session
@@ -40,14 +41,27 @@ def dashboard(
             "name": f"{user.first_name} {user.last_name}",
             "role": user.role,
         },
-        "reservations": [ReservationRead.model_validate(res) for res in my_reservations],
+        "upcoming_appointments": [ReservationRead.model_validate(res) for res in my_reservations],
     }
 
     if user.role == UserRole.owner:
-        owned_slots = session.exec(
-            select(BookingSlot)
-            .where(BookingSlot.owner_id == user.user_id)
-            .order_by(BookingSlot.start_time)
+        # Slots the owner has that have at least one confirmed reservation
+        # i.e. appointments they actually need to show up to
+        booked_slot_ids = {
+            r.slot_id
+            for r in session.exec(
+                select(Reservation).where(
+                    Reservation.status == ReservationStatus.CONFIRMED
+                )
+            ).all()
+        }
+
+        upcoming_appointments = session.exec(
+            select(BookingSlot).where(
+                BookingSlot.owner_id == user.user_id,
+                BookingSlot.id.in_(booked_slot_ids),       # has attendees
+                BookingSlot.status == SlotStatus.BOOKED,   # confirmed booked
+            ).order_by(BookingSlot.start_time)
         ).all()
 
         pending_requests = session.exec(
@@ -57,7 +71,7 @@ def dashboard(
             )
         ).all()
 
-        dashboard_info["owned_slots"] = [BookingSlotRead.model_validate(slot) for slot in owned_slots]
+        dashboard_info["upcoming_appointments"] = [BookingSlotRead.model_validate(slot) for slot in upcoming_appointments]
         dashboard_info["pending_requests"] = pending_requests
 
     return dashboard_info
