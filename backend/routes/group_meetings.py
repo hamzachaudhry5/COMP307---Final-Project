@@ -201,7 +201,7 @@ def finalize_meeting(
             is_recurring=recurrence_weeks > 1,
             recurrence_weeks=recurrence_weeks,
             group_meeting_id=meeting.id,
-            max_participants=len(voter_ids)
+            max_participants=max(1, len(voter_ids))
         )
         session.add(slot)
         session.flush()

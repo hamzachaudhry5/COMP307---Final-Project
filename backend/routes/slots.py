@@ -3,6 +3,7 @@ from datetime import timedelta
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from models.booking import (
@@ -16,7 +17,7 @@ from models.booking import (
     SlotStatus,
     build_mailto,
 )
-from models.users import User, UserRole, UserRead
+from models.users import User, UserRole, UserRead, InviteLinkResponse
 from database.session import get_session
 from security import get_current_user, get_owner
 
@@ -119,13 +120,42 @@ def activate_slot(
         raise HTTPException(400, "Only PRIVATE slots can be activated")
 
     slot.status = SlotStatus.ACTIVE
-    # Generate invite token if not already created
-    if not slot.invite_token:
-        slot.invite_token = secrets.token_urlsafe(32)
-
     session.commit()
     session.refresh(slot)
     return slot
+
+
+# Owner: create/retrieve invitation link
+@router.post("/invite-link", response_model=InviteLinkResponse)
+def create_invite_link(
+    session: Session = Depends(get_session),
+    owner: User = Depends(get_owner),
+):
+    if not owner.invite_token:
+        owner.invite_token = secrets.token_urlsafe(32)
+        session.add(owner)
+        session.commit()
+        session.refresh(owner)
+    return InviteLinkResponse(
+        invite_token=owner.invite_token,
+        invite_url=_invite_url(owner.invite_token),
+    )
+
+
+# Owner: regenerate invitation link
+@router.post("/invite-link/regenerate", response_model=InviteLinkResponse)
+def regenerate_invite_link(
+    session: Session = Depends(get_session),
+    owner: User = Depends(get_owner),
+):
+    owner.invite_token = secrets.token_urlsafe(32)
+    session.add(owner)
+    session.commit()
+    session.refresh(owner)
+    return InviteLinkResponse(
+        invite_token=owner.invite_token,
+        invite_url=_invite_url(owner.invite_token),
+    )
 
 
 #Owner: update slot
@@ -221,41 +251,30 @@ def get_slots_by_invite(
     Resolves an invite URL token. Returns the owner's active slots.
     Frontend should redirect to login before hitting this if unauthenticated.
     """
-    owner_booking_slot = session.exec(
-        select(BookingSlot).where(BookingSlot.invite_token == token)
+    owner = session.exec(
+        select(User).where(User.invite_token == token, User.role == UserRole.owner)
     ).first()
-
-    if not owner_booking_slot:
+    if not owner:
         raise HTTPException(404, "Invalid or expired invite link")
 
     return session.exec(
         select(BookingSlot)
-        .where(BookingSlot.owner_id == owner_booking_slot.owner_id)
+        .where(BookingSlot.owner_id == owner.user_id)
         .where(BookingSlot.status == SlotStatus.ACTIVE)
         .order_by(BookingSlot.start_time)
     ).all()
 
 
-# Public: list all owners with active slots 
+# Public: list all owners 
 @router.get("/owners", response_model=list[UserRead])
 def list_owners(
     session: Session = Depends(get_session),
     _: User = Depends(get_current_user),
 ):
-    """Returns all @mcgill.ca owners who have at least one active slot."""
-    owners = session.exec(
+    """Returns all active owners."""
+    return session.exec(
         select(User).where(User.role == UserRole.owner, User.is_active == True)
     ).all()
-
-    return [
-        owner
-        for owner in owners
-        if session.exec(
-            select(BookingSlot)
-            .where(BookingSlot.owner_id == owner.user_id)
-            .where(BookingSlot.status == SlotStatus.ACTIVE)
-        ).first()
-    ]
 
 
 #  Public: browse a specific owner's active slots 
@@ -283,3 +302,6 @@ def _get_owned_slot(slot_id: int, owner: User, session: Session) -> BookingSlot:
     if not slot or slot.owner_id != owner.user_id:
         raise HTTPException(404, "Slot not found")
     return slot
+
+def _invite_url(token: str) -> str:
+    return f"/booking/invite/{token}"

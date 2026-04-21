@@ -41,7 +41,7 @@ class BookingSlotBase(SQLModel):
     end_time: datetime
     is_recurring: bool = False
     recurrence_weeks: Optional[int] = Field(default=None, ge=1, le=52)
-    max_participants: int = Field(default=1, ge=1)
+    max_participants: Optional[int] = Field(default=1, ge=1)
 
 
 class BookingSlot(BookingSlotBase, table=True):
@@ -50,7 +50,6 @@ class BookingSlot(BookingSlotBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     owner_id: int = Field(foreign_key="user.user_id")
     status: SlotStatus = SlotStatus.PRIVATE
-    invite_token: Optional[str] = Field(default=None, unique=True, index=True)
     group_meeting_id: Optional[int] = Field(default=None, foreign_key="group_meetings.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("America/Toronto")))
 
@@ -63,7 +62,6 @@ class BookingSlotRead(BookingSlotBase):
     id: int
     owner_id: int
     status: SlotStatus
-    invite_token: Optional[str] = None
     group_meeting_id: Optional[int] = None
     created_at: datetime
 

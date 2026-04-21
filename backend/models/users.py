@@ -22,6 +22,7 @@ class User(SQLModel, table=True):
     last_name: str
     role: UserRole = Field(default=UserRole.user)
     is_active: bool = Field(default=True)
+    invite_token: Optional[str] = Field(default=None, unique=True, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("America/Toronto")))
     
     # Relationships
@@ -71,3 +72,8 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+class InviteLinkResponse(BaseModel):
+    invite_token: str
+    invite_url: str
