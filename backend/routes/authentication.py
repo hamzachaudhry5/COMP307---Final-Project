@@ -3,11 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from datetime import timedelta
 
-<<<<<<< HEAD
-from database import get_session
-=======
-from database import get_db
->>>>>>> 33a8401 (added jwt tokens for authentication)
+from database.session import get_session
 from models.users import User, UserCreate, UserRead, Token
 from security import (
     hash_password, 
@@ -39,11 +35,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_session)):
 
 
 @router.post("/login", response_model=Token)
-<<<<<<< HEAD
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_session)):
-=======
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
->>>>>>> 33a8401 (added jwt tokens for authentication)
     user = db.exec(select(User).where(User.email == form_data.username)).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
