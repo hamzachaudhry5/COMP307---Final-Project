@@ -14,6 +14,7 @@ src/
 │   ├── LandingPage.jsx
 │   ├── LoginPage.jsx
 │   └── RegisterPage.jsx
+│   └── Dashboard.jsx
 
 ## State Management
 Uses a global AuthContext to keep track of the currentn user
