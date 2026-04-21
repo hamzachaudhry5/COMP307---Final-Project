@@ -30,7 +30,7 @@ function LoginPage() {
             navigate("/");
 
         } catch (err) {
-            setError("Invalid email or password.");
+            setError(err.message);
         }
        
     }
@@ -53,7 +53,7 @@ function LoginPage() {
                 <section className="login-panel">
                     <h1 className="login-title">Login</h1>
                     <p className="login-message">Please use your McGill email to log in.</p>
-                    <form className="login-form">
+                    <form className="login-form" onSubmit={handleSubmit}>
                         <label htmlFor="username">McGill Email:</label>
                         <input 
                             type="email" 
@@ -73,7 +73,7 @@ function LoginPage() {
                             required />
 
                         {error && (
-                            <p style={{ color: red }}>{error}</p>
+                            <p style={{ color: "red" }}>{error}</p>
                         )}
                         
                         <button className="submit-button" type="submit">Login</button>

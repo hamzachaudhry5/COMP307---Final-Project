@@ -40,7 +40,7 @@ function RegisterPage(){
 
             navigate("/login");
         } catch (err) {
-            setError("Registration failed. Please try again.");
+            setError(err.message);
         }
 
     }

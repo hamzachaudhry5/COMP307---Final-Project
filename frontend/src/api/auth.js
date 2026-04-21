@@ -8,7 +8,8 @@ export async function registerUser(data) {
     });
 
     if (!res.ok) {
-        throw new Error("Registration failed");
+        const err = await res.json();
+        throw new Error(err.detail || "Registration failed");
     }
     return res.json();
 }
@@ -25,7 +26,8 @@ export async function loginUser(email, password) {
     });
 
     if (!res.ok) {
-        throw new Error("Login failed");
+        const err = await res.json();
+        throw new Error(err.detail || "Login failed");
     }
     return res.json();
 }
@@ -36,7 +38,8 @@ export async function getMe(token) {
     });
 
     if (!res.ok) {
-        throw new Error("Failed to fetch user");
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to fetch user");
     }
 
     return res.json();
