@@ -13,7 +13,8 @@ from models.booking import (
     build_mailto,
 )
 from models.users import User
-from database.session import get_current_user, get_owner, get_session
+from database.session import get_session
+from security import get_current_user, get_owner
 
 router = APIRouter(prefix="/meeting-requests", tags=["Meeting Requests"])
 

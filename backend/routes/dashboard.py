@@ -10,8 +10,8 @@ from models.booking import (
     RequestStatus,
 )
 from models.users import User, UserRole
-from database.session import get_current_user, get_session
-
+from database.session import get_session
+from security import get_current_user
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 

@@ -10,13 +10,14 @@ from models.booking import (
     ReservationStatus,
 )
 from models.users import User, UserRole
-from database.session import get_current_user, get_session
+from database.session import get_session
+from security import get_current_user
 
 
-calendar_router = APIRouter(prefix="/calendar", tags=["Calendar"])
+router = APIRouter(prefix="/calendar", tags=["Calendar"])
 
 
-@calendar_router.get("/export.ics")
+@router.get("/export.ics")
 def export_ical(
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),

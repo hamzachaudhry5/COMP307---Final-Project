@@ -15,7 +15,8 @@ from models.booking import (
     build_mailto,
 )
 from models.users import User, UserRole, UserRead
-from database.session import get_current_user, get_owner, get_session
+from database.session import get_session
+from security import get_current_user, get_owner
 
 router = APIRouter(prefix="/slots", tags=["Slots"])
 

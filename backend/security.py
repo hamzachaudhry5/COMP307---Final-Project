@@ -5,8 +5,8 @@ from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from sqlmodel import Session, select
-from database import get_db
-from models.users import User
+from database import get_session
+from models.users import User, UserRole
 import os
 from dotenv import load_dotenv
 
@@ -34,7 +34,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_session)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -52,3 +52,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user
+ 
+ 
+def get_owner(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.owner:
+        raise HTTPException(403, "Only owners (@mcgill.ca) can perform this action")
+    return current_user
