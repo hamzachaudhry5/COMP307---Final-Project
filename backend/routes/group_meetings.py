@@ -218,7 +218,8 @@ def finalize_meeting(
 
     if not voter_emails:
         return []
-
+    
+    all_emails = voter_emails + [owner.email] 
     repeat_text = f" It will repeat for {recurrence_weeks} consecutive weeks." if recurrence_weeks > 1 else ""
     body_text = (
         f"Hi everyone,\n\n"
@@ -228,7 +229,7 @@ def finalize_meeting(
     )
 
     return build_mailto(
-        to=",".join(voter_emails), 
+        to=",".join(all_emails), 
         subject=f"Meeting Finalized: {meeting.title}",
         body=body_text
     )
