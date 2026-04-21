@@ -1,45 +1,48 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { registerUser } from "../api/auth";
 
 function RegisterPage(){
-    const { login } = useAuth();
     const navigate = useNavigate();
 
     const [email, setEmail] = useState("");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [error, setError] = useState("");
 
     function passwordsMatch(){
         return password === confirmPassword;
     }
 
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
         e.preventDefault();
 
         // Emails are not generally case sensitive
         const normalizedEmail = email.toLowerCase();
 
+        setError("");
+
+        // UX validation
         if (!passwordsMatch()){
-            alert("Passwords do not match.");
-            return;
-        }
-        let role;
-
-        if (normalizedEmail.endsWith("@mcgill.ca")) {
-            role = "owner";
-        }
-        else if (normalizedEmail.endsWith("@mail.mcgill.ca")) {
-            role = "user";
-        }
-        else {
-            alert("Only McGill emails are allowed to register.");
+            setError("Passwords do not match.");
             return;
         }
 
-        //Backend response
+        try {
+            await registerUser({
+                email: normalizedEmail,
+                password,
+                first_name: firstName,
+                last_name: lastName
+            });
 
-        navigate("/");
+            navigate("/login");
+        } catch (err) {
+            setError("Registration failed. Please try again.");
+        }
+
     }
 
     return (
@@ -64,6 +67,20 @@ function RegisterPage(){
                     </p>
 
                     <form className="login-form" onSubmit={handleSubmit}>
+                        <label>First Name:</label>
+                        <input 
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            required
+                        />
+
+                        <label>Last Name:</label>
+                        <input 
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            required
+                        />
+
                         <label htmlFor="email">McGill Email:</label>
                         <input
                             type="email"
@@ -92,6 +109,9 @@ function RegisterPage(){
                         {/* PASSWORD CHECKING */}
                         {confirmPassword.length > 0 && !passwordsMatch() && (
                             <p style={{ color: "red"}}>Passwords do not match.</p>
+                        )}
+                        {error && (
+                            <p style={{ color: "red" }}>{error}</p>
                         )}
 
                         <button className="submit-button" type="submit">

@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { loginUser, getMe } from "../api/auth";
 
 function LoginPage() {
     const { login } = useAuth();
@@ -8,19 +9,30 @@ function LoginPage() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
 
     async function handleSubmit(e) {
         e.preventDefault();
+        setError("");
 
         // UX Check
         if(!email.endsWith("@mcgill.ca") && !email.endsWith("@mail.mcgill.ca")) {
-            alert("Please use a valid Mcgill email.")
+            setError("Please use a valid Mcgill email.")
             return;
         }
 
         //backend response
+        try {
+            const tokenRes = await loginUser(email, password);
+            const user = await getMe(tokenRes.access_token);
 
-        navigate("/");
+            login(user, tokenRes.access_token);
+            navigate("/");
+
+        } catch (err) {
+            setError("Invalid email or password.");
+        }
+       
     }
 
     return (
@@ -59,6 +71,10 @@ function LoginPage() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required />
+
+                        {error && (
+                            <p style={{ color: red }}>{error}</p>
+                        )}
                         
                         <button className="submit-button" type="submit">Login</button>
                     </form>
