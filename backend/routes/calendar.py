@@ -2,12 +2,14 @@ import uuid
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from sqlmodel import Session, select
+from sqlalchemy import or_
 from icalendar import Calendar, Event
 
 from models.booking import (
     BookingSlot,
     Reservation,
     ReservationStatus,
+    SlotStatus,
 )
 from models.users import User, UserRole
 from database.session import get_session
@@ -50,8 +52,17 @@ def export_ical(
 
     # Owner's own slots
     if user.role == UserRole.owner:
+        owned_confirmed_ids = session.exec(
+            select(Reservation.slot_id).where(Reservation.status == ReservationStatus.CONFIRMED).distinct()
+        ).all()
         owned_slots = session.exec(
-            select(BookingSlot).where(BookingSlot.owner_id == user.user_id)
+            select(BookingSlot).where(
+                BookingSlot.owner_id == user.user_id,
+                or_(
+                    BookingSlot.status == SlotStatus.BOOKED,
+                    BookingSlot.id.in_(owned_confirmed_ids),
+                ),
+            )
         ).all()
         for slot in owned_slots:
             _add_event(cal, slot, note="Your booking slot")

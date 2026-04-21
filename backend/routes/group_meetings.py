@@ -13,6 +13,7 @@ from models.booking import (
     GroupVote,
     GroupVoteCreate,
     MailtoResponse,
+    Reservation,
     SlotStatus,
     SlotType,
     build_mailto,
@@ -154,7 +155,7 @@ def get_heatmap(
 
 
 # Owner: finalize meeting — pick a time and create booking slot(s)
-@router.post("/{meeting_id}/finalize", response_model=list[MailtoResponse])
+@router.post("/{meeting_id}/finalize", response_model=MailtoResponse)
 def finalize_meeting(
     meeting_id: int,
     option_id: int,
@@ -185,7 +186,7 @@ def finalize_meeting(
         .distinct()
     ).all()
 
-    # Create recurring booking slots
+    # Create recurring booking slots and attach all voters as participants.
     first_slot = None
     for week in range(recurrence_weeks):
         delta = timedelta(weeks=week)
@@ -203,6 +204,9 @@ def finalize_meeting(
             max_participants=len(voter_ids)
         )
         session.add(slot)
+        session.flush()
+        for voter_id in voter_ids:
+            session.add(Reservation(slot_id=slot.id, user_id=voter_id))
         if week == 0:
             first_slot = slot
 
@@ -216,10 +220,7 @@ def finalize_meeting(
         select(User.email).where(User.user_id.in_(voter_ids))
     ).all()
 
-    if not voter_emails:
-        return []
-    
-    all_emails = voter_emails + [owner.email] 
+    all_emails = voter_emails + [owner.email]
     repeat_text = f" It will repeat for {recurrence_weeks} consecutive weeks." if recurrence_weeks > 1 else ""
     body_text = (
         f"Hi everyone,\n\n"

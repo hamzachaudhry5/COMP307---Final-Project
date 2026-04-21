@@ -5,6 +5,7 @@ from models.booking import (
     BookingSlot,
     MailtoResponse,
     MeetingRequest,
+    MeetingRequestCreate,
     MeetingRequestRead,
     Reservation,
     RequestStatus,
@@ -13,6 +14,7 @@ from models.booking import (
     build_mailto,
 )
 from models.users import User
+from models.users import UserRole
 from database.session import get_session
 from security import get_current_user, get_owner
 
@@ -22,16 +24,20 @@ router = APIRouter(prefix="/meeting-requests", tags=["Meeting Requests"])
 # User: send a meeting request to an owner 
 @router.post("", response_model=MailtoResponse, status_code=201)
 def send_request(
-    meeting_request: MeetingRequest,
+    meeting_request: MeetingRequestCreate,
     session: Session = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
     owner = session.get(User, meeting_request.owner_id)
     if not owner:
         raise HTTPException(404, "Owner not found")
+    if owner.role != UserRole.owner:
+        raise HTTPException(400, "Meeting requests can only be sent to owners")
 
     if owner.user_id == user.user_id:
         raise HTTPException(400, "Cannot send a meeting request to yourself")
+    if meeting_request.end_time <= meeting_request.start_time:
+        raise HTTPException(400, "end_time must be after start_time")
 
     req = MeetingRequest(**meeting_request.model_dump(), requester_id=user.user_id)
     session.add(req)

@@ -45,23 +45,16 @@ def dashboard(
     }
 
     if user.role == UserRole.owner:
-        # Slots the owner has that have at least one confirmed reservation
-        # i.e. appointments they actually need to show up to
-        booked_slot_ids = {
-            r.slot_id
-            for r in session.exec(
-                select(Reservation).where(
-                    Reservation.status == ReservationStatus.CONFIRMED
-                )
-            ).all()
-        }
-
         upcoming_appointments = session.exec(
-            select(BookingSlot).where(
+            select(BookingSlot)
+            .join(Reservation, Reservation.slot_id == BookingSlot.id)
+            .where(
                 BookingSlot.owner_id == user.user_id,
-                BookingSlot.id.in_(booked_slot_ids),       # has attendees
-                BookingSlot.status == SlotStatus.BOOKED,   # confirmed booked
-            ).order_by(BookingSlot.start_time)
+                Reservation.status == ReservationStatus.CONFIRMED,
+                BookingSlot.status != SlotStatus.CANCELLED,
+            )
+            .distinct()
+            .order_by(BookingSlot.start_time)
         ).all()
 
         pending_requests = session.exec(

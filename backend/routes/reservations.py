@@ -28,6 +28,10 @@ def reserve_slot(
     slot = session.get(BookingSlot, slot_id)
     if not slot:
         raise HTTPException(404, "Slot not found")
+    if slot.status != SlotStatus.ACTIVE:
+        raise HTTPException(400, "Only ACTIVE slots can be reserved")
+    if slot.owner_id == user.user_id:
+        raise HTTPException(400, "Owners cannot reserve their own slots")
     
     # Check if slot is full
     current_reservations_count = session.exec(
@@ -51,7 +55,7 @@ def reserve_slot(
     if duplicate_check:
         raise HTTPException(400, "You have already reserved this slot")
 
-    if current_reservations_count + 1 == slot.max_participants:
+    if current_reservations_count + 1 >= slot.max_participants:
         slot.status = SlotStatus.BOOKED
 
     reservation = Reservation(slot_id=slot_id, user_id=user.user_id)
@@ -91,7 +95,16 @@ def cancel_reservation(
         raise HTTPException(400, "Reservation is already cancelled")
 
     slot = session.get(BookingSlot, reservation.slot_id)
-    slot.status = SlotStatus.ACTIVE # Change slot status from booked to active
+    remaining_confirmed = session.exec(
+        select(func.count(Reservation.id)).where(
+            Reservation.slot_id == slot.id,
+            Reservation.status == ReservationStatus.CONFIRMED,
+            Reservation.id != reservation.id,
+        )
+    ).one()
+
+    if slot.status != SlotStatus.CANCELLED:
+        slot.status = SlotStatus.BOOKED if remaining_confirmed >= slot.max_participants else SlotStatus.ACTIVE
     reservation.status = ReservationStatus.CANCELLED
     session.commit()
 

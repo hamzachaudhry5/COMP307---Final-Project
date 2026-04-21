@@ -7,6 +7,7 @@ import enum
 
 if TYPE_CHECKING:
     from models.booking import BookingSlot
+    from models.booking import Reservation
 
 class UserRole(str, enum.Enum):
     owner = "owner"
@@ -25,6 +26,7 @@ class User(SQLModel, table=True):
     
     # Relationships
     owned_slots: List["BookingSlot"] = Relationship(back_populates="owner")
+    reservations: List["Reservation"] = Relationship(back_populates="user")
     
     @staticmethod
     def resolve_role(email: str) -> UserRole:

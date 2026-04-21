@@ -51,7 +51,7 @@ class BookingSlot(BookingSlotBase, table=True):
     owner_id: int = Field(foreign_key="user.user_id")
     status: SlotStatus = SlotStatus.PRIVATE
     invite_token: Optional[str] = Field(default=None, unique=True, index=True)
-    group_meeting_id: Optional[int] = Field(default=None, foreign_key="groupmeeting.id")
+    group_meeting_id: Optional[int] = Field(default=None, foreign_key="group_meetings.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("America/Toronto")))
 
     # Relationships
@@ -76,6 +76,14 @@ class BookingSlotUpdate(SQLModel):
     description: Optional[str] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+
+
+class BookingSlotCreate(BookingSlotBase):
+    pass
+
+
+class BookingSlotBulkCreate(SQLModel):
+    slots: list[BookingSlotCreate]
 
 
 ### Reservation 
@@ -202,6 +210,10 @@ class MeetingRequest(MeetingRequestBase, table=True):
     status: RequestStatus = RequestStatus.PENDING
     booking_slot_id: Optional[int] = Field(default=None, foreign_key="booking_slots.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("America/Toronto")))
+
+
+class MeetingRequestCreate(MeetingRequestBase):
+    pass
 
 
 class MeetingRequestRead(MeetingRequestBase):

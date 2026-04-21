@@ -7,6 +7,8 @@ from sqlmodel import Session, select
 
 from models.booking import (
     BookingSlot,
+    BookingSlotBulkCreate,
+    BookingSlotCreate,
     BookingSlotRead,
     BookingSlotUpdate,
     MailtoResponse,
@@ -24,7 +26,7 @@ router = APIRouter(prefix="/slots", tags=["Slots"])
 # Owner: create slot(s) 
 @router.post("", response_model=list[BookingSlotRead], status_code=201)
 def create_slot(
-    booking_slot: BookingSlot,
+    booking_slot: BookingSlotCreate,
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
@@ -35,7 +37,7 @@ def create_slot(
     if booking_slot.end_time <= booking_slot.start_time:
         raise HTTPException(400, "end_time must be after start_time")
 
-    recurring_weeks = booking_slot.recurrence_weeks if (booking_slot.is_recurring and booking_slot.recurrence_weeks > 1) else 1
+    recurring_weeks = booking_slot.recurrence_weeks if (booking_slot.is_recurring and booking_slot.recurrence_weeks and booking_slot.recurrence_weeks > 1) else 1
     created_slots = []
 
     for week in range(recurring_weeks):
@@ -53,6 +55,42 @@ def create_slot(
     for slot in created_slots:
         session.refresh(slot)
 
+    return created_slots
+
+
+@router.post("/bulk", response_model=list[BookingSlotRead], status_code=201)
+def create_bulk_slots(
+    payload: BookingSlotBulkCreate,
+    session: Session = Depends(get_session),
+    owner: User = Depends(get_owner),
+):
+    """
+    Create multiple slot templates in one request.
+    Each template can optionally be recurring for N weeks.
+    """
+    if not payload.slots:
+        raise HTTPException(400, "At least one slot is required")
+
+    created_slots: list[BookingSlot] = []
+    for slot_data in payload.slots:
+        if slot_data.end_time <= slot_data.start_time:
+            raise HTTPException(400, "Each slot end_time must be after start_time")
+
+        recurring_weeks = slot_data.recurrence_weeks if (slot_data.is_recurring and slot_data.recurrence_weeks and slot_data.recurrence_weeks > 1) else 1
+        for week in range(recurring_weeks):
+            delta = timedelta(weeks=week)
+            slot = BookingSlot(
+                **slot_data.model_dump(),
+                owner_id=owner.user_id,
+                start_time=slot_data.start_time + delta,
+                end_time=slot_data.end_time + delta,
+            )
+            session.add(slot)
+            created_slots.append(slot)
+
+    session.commit()
+    for slot in created_slots:
+        session.refresh(slot)
     return created_slots
 
 
@@ -105,6 +143,9 @@ def update_slot(
 
     for field, value in booking_slot.model_dump(exclude_unset=True).items():
         setattr(slot, field, value)
+
+    if slot.end_time <= slot.start_time:
+        raise HTTPException(400, "end_time must be after start_time")
 
     session.commit()
     session.refresh(slot)
