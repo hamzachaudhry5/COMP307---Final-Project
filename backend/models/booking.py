@@ -134,6 +134,7 @@ class GroupMeeting(GroupMeetingBase, table=True):
 
 class GroupMeetingCreate(GroupMeetingBase):
     options: list["GroupAvailabilityOptionBase"]
+    invited_user_ids: list[int] = []
 
 
 class GroupMeetingRead(GroupMeetingBase):
@@ -189,6 +190,14 @@ class GroupVote(SQLModel, table=True):
 
 class GroupVoteCreate(SQLModel):
     option_ids: list[int]  # user can select multiple available time slots
+
+
+class GroupMeetingInvite(SQLModel, table=True):
+    __tablename__ = "group_meeting_invites"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    meeting_id: int = Field(foreign_key="group_meetings.id")
+    user_id: int = Field(foreign_key="user.user_id")
 
 
 ### MeetingRequest (Type 1) 

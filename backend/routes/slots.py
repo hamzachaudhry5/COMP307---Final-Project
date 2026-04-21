@@ -277,6 +277,27 @@ def list_owners(
     ).all()
 
 
+# Public: list owners that currently have active slots
+@router.get("/owners/with-active-slots", response_model=list[UserRead])
+def list_owners_with_active_slots(
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_user),
+):
+    owners = session.exec(
+        select(User).where(User.role == UserRole.owner, User.is_active == True)
+    ).all()
+    return [
+        owner
+        for owner in owners
+        if session.exec(
+            select(BookingSlot).where(
+                BookingSlot.owner_id == owner.user_id,
+                BookingSlot.status == SlotStatus.ACTIVE,
+            )
+        ).first()
+    ]
+
+
 #  Public: browse a specific owner's active slots 
 @router.get("/owner/{owner_id}", response_model=list[BookingSlotRead])
 def get_owner_active_slots(

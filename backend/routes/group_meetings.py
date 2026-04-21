@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 from models.booking import (
     BookingSlot,
     GroupAvailabilityOption,
+    GroupMeetingInvite,
     GroupAvailabilityOptionRead,
     GroupMeeting,
     GroupMeetingCreate,
@@ -34,6 +35,8 @@ def create_group_meeting(
 ):
     if not data.options:
         raise HTTPException(400, "At least one time option is required")
+    if not data.invited_user_ids:
+        raise HTTPException(400, "At least one invited user is required")
 
     meeting = GroupMeeting(
         title=data.title,
@@ -53,6 +56,19 @@ def create_group_meeting(
                 end_time=option.end_time,
             )
         )
+
+    invited_users = session.exec(
+        select(User).where(User.user_id.in_(data.invited_user_ids))
+    ).all()
+    invited_ids = {u.user_id for u in invited_users}
+    missing_ids = sorted(set(data.invited_user_ids) - invited_ids)
+    if missing_ids:
+        raise HTTPException(400, f"Invited users not found: {missing_ids}")
+    if owner.user_id in invited_ids:
+        raise HTTPException(400, "Owner cannot be in invited users list")
+
+    for invited_user_id in invited_ids:
+        session.add(GroupMeetingInvite(meeting_id=meeting.id, user_id=invited_user_id))
 
     session.commit()
     session.refresh(meeting)
@@ -89,6 +105,16 @@ def vote(
         raise HTTPException(404, "Meeting not found")
     if meeting.is_finalized:
         raise HTTPException(400, "Voting is closed, meeting is already finalized")
+
+    invited_ids = set(
+        session.exec(
+            select(GroupMeetingInvite.user_id).where(
+                GroupMeetingInvite.meeting_id == meeting_id
+            )
+        ).all()
+    )
+    if user.user_id not in invited_ids:
+        raise HTTPException(403, "Only invited users can vote on this meeting")
 
     # Validate all option IDs belong to this meeting
     valid_options = {
@@ -180,13 +206,15 @@ def finalize_meeting(
     if recurrence_weeks < 1:
         raise HTTPException(400, "recurrence_weeks must be between 1 and 52")
 
-    voter_ids = session.exec(
-        select(GroupVote.user_id)
-        .where(GroupVote.meeting_id == meeting_id)
+    invited_user_ids = session.exec(
+        select(GroupMeetingInvite.user_id)
+        .where(GroupMeetingInvite.meeting_id == meeting_id)
         .distinct()
     ).all()
+    if not invited_user_ids:
+        raise HTTPException(400, "Cannot finalize a meeting with no invited users")
 
-    # Create recurring booking slots and attach all voters as participants.
+    # Create recurring booking slots and attach all invited users as participants.
     first_slot = None
     for week in range(recurrence_weeks):
         delta = timedelta(weeks=week)
@@ -201,12 +229,12 @@ def finalize_meeting(
             is_recurring=recurrence_weeks > 1,
             recurrence_weeks=recurrence_weeks,
             group_meeting_id=meeting.id,
-            max_participants=max(1, len(voter_ids))
+            max_participants=max(1, len(invited_user_ids))
         )
         session.add(slot)
         session.flush()
-        for voter_id in voter_ids:
-            session.add(Reservation(slot_id=slot.id, user_id=voter_id))
+        for invited_user_id in invited_user_ids:
+            session.add(Reservation(slot_id=slot.id, user_id=invited_user_id))
         if week == 0:
             first_slot = slot
 
@@ -216,11 +244,11 @@ def finalize_meeting(
         meeting.finalized_slot_id = first_slot.id
     session.commit()
 
-    voter_emails = session.exec(
-        select(User.email).where(User.user_id.in_(voter_ids))
+    invited_emails = session.exec(
+        select(User.email).where(User.user_id.in_(invited_user_ids))
     ).all()
 
-    all_emails = voter_emails + [owner.email]
+    all_emails = invited_emails + [owner.email]
     repeat_text = f" It will repeat for {recurrence_weeks} consecutive weeks." if recurrence_weeks > 1 else ""
     body_text = (
         f"Hi everyone,\n\n"
