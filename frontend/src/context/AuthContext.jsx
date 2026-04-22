@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { loginUser, getMe, refreshAccessToken, logoutUser } from "../api/auth";
+import { auth } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -29,17 +29,17 @@ export function AuthProvider({ children }) {
                 
                 // Verify token is still valid by fetching user data
                 try {
-                    const userData = await getMe(storedAccessToken);
+                    const userData = await auth.me();
                     setUser(userData);
                 } catch (error) {
                     // Token invalid, try to refresh
                     try {
-                        const newTokens = await refreshAccessToken(storedRefreshToken);
+                        const newTokens = await auth.refresh(storedRefreshToken);
                         setToken(newTokens.access_token);
                         setRefreshToken(newTokens.refresh_token);
                         localStorage.setItem(ACCESS_TOKEN_KEY, newTokens.access_token);
                         localStorage.setItem(REFRESH_TOKEN_KEY, newTokens.refresh_token);
-                        const userData = await getMe(newTokens.access_token);
+                        const userData = await auth.me();
                         setUser(userData);
                     } catch (refreshError) {
                         clearAuth();
@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
             // Only refresh if token expires in less than 5 minutes
             if (timeUntilExpiry < TOKEN_REFRESH_BUFFER_MS && timeUntilExpiry > 0) {
                 try {
-                    const newTokens = await refreshAccessToken(refreshToken);
+                    const newTokens = await auth.refresh(refreshToken);
                     setToken(newTokens.access_token);
                     setRefreshToken(newTokens.refresh_token);
                     localStorage.setItem(ACCESS_TOKEN_KEY, newTokens.access_token);
@@ -102,24 +102,25 @@ export function AuthProvider({ children }) {
     };
 
     const login = useCallback(async (email, password) => {
-        const tokens = await loginUser(email, password);
-        const userData = await getMe(tokens.access_token);
+        const tokens = await auth.login(email, password);
+        
+        localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
+        localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
+        
+        const userData = await auth.me();
         
         setToken(tokens.access_token);
         setRefreshToken(tokens.refresh_token);
         setUser(userData);
         
-        localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
-        localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
         localStorage.setItem(USER_KEY, JSON.stringify(userData));
         
         return userData;
     }, []);
-
     const logout = useCallback(async () => {
         if (refreshToken) {
             try {
-                await logoutUser(refreshToken);
+                await auth.logout(refreshToken);
             } catch (error) {
             }
         }
