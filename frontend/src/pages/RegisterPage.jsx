@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { registerUser } from "../api/auth";
+import { auth } from "../api/client";
 
 function RegisterPage(){
     const navigate = useNavigate();
@@ -31,7 +31,7 @@ function RegisterPage(){
         }
 
         try {
-            await registerUser({
+            await auth.register({
                 email: normalizedEmail,
                 password,
                 first_name: firstName,
