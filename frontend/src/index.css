@@ -26,6 +26,10 @@ button {
   background-color: #a6192e;
   color: white;
 }
+/* logout button */
+.logout-button {
+  margin-left: 10px;
+}
 
 .container {
   width: 90%;

@@ -1,9 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
 function Dashboard() {
-    const { user } = useAuth();
+    const navigate = useNavigate();
+    const { user, logout } = useAuth();
     const isOwner = user?.role === "owner"; // Role check placeholder
 
     const [slots, setSlots] = useState([]);
@@ -13,6 +14,7 @@ function Dashboard() {
         startTime: "",
         endTime: ""
     });
+    const [appointments, setAppointments] = useState([])
 
     function handleInputChange(e) {
         const { name, value } = e.target;
@@ -74,90 +76,162 @@ function Dashboard() {
         );
     }
 
+    function handleLogout(){
+        logout();
+        navigate("/login");
+    }
+
+    function emailOwner(email) {
+        window.location.href = `mailto:${email}`;
+    }
+
   return (
     <div>
-      <header className="navbar">
-        <div className="container nav-content">
-          <h1 className="title">BookSOCS</h1>
+        {/* Navbar */}
+        <header className="navbar">
+            <div className="container nav-content">
+                <h1 className="title">BookSOCS</h1>
 
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/login">Logout</Link>
-          </nav>
-        </div>
-      </header>
+                <nav>
+                    <Link to="/">Home</Link>
+                    <button className="logout-button" onClick={handleLogout}>Logout</button>
+                </nav>
+            </div>
+        </header>
 
-      <main className="dashboard-page">
-        <div className="container">
-          <h2>Dashboard</h2>
-          <p className="dash-header">Welcome to your booking dashboard.</p>
+        {/* Main */}
+        <main className="dashboard-page">
+            <div className="container">
+                <h2 className="dash-header">Welcome, {user?.first_name}</h2>
 
-          <section className="dashboard-section">
-            <h3 className="form-header">Create a slot</h3>
-            <form className="slot-form">
-                <label>Slot Title:
-                    <input id="slotTitle" type="text" name="slotTitle" 
-                    value={formData.slotTitle} onChange={handleInputChange} placeholder="e.g. COMP 307 Office Hours" required />
-                </label>
+                {/* User features */}
+                <section className="dashboard-section">
+                    <h3 className="form-header">Your Appointments</h3>
 
-                <label>Date:
-                    <input id="date" type="date" name="date" value={formData.date} onChange={handleInputChange} required />
-                </label>
+                    {appointments.length === 0 ? (
+                        <p>No appointments yet.</p>
+                    ) : (
+                        appointments.map(appt =>(
+                            // NOTE appt fields all placeholders until backend implementation
+                            <div key="{appt.id}" className="appointment-card">
+                                <p>{appt.title}</p>
+                                <p>{appt.date} {appt.time}</p>
 
-                <label>Start Time:
-                    <input id="startTime" type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required />
-                </label>
+                                <button onClick={() => emailOwner(appt.ownerEmail)}>Message Owner</button>
+                                <button>Cancel Appointment</button>
+                            </div>
+                        ))
+                    )}
 
-                <label>End Time:
-                    <input id="endTime" type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required />
-                </label>
+                    <button className="submit-button">
+                        Book Appointment
+                    </button>
+                </section>
 
-                <button className="submit-button" type="submit" onClick={createSlot}>
-                    Create Slot
-                </button>
-            </form>
-          </section>
-            
-          <section className="slots-section">
-            <h3 className="form-header">Your Slots</h3>
-            {slots.length === 0 ? (
-              <p>You have no slots created yet.</p>
-            ) : (
-                <div className="slots-list">
-                    {slots.map((slot) => (
-                    <div key={slot.id} className="slot-card">
-                      <div className="slot-details">
-                        <h4>{slot.slotTitle}</h4>
-                        <h3>{slot.date}</h3>
-                        <p>{slot.startTime} to {slot.endTime}</p>
-                      </div>
+                {/* OWNER FEATURES */}
+                {isOwner && (
+                    <>
+                        {/* CREATE SLOT */}
+                        <section className="dashboard-section">
+                            <h3 className="form-header">Create a slot</h3>
+                            
+                            <form className="slot-form" onSubmit={createSlot}>
+                                <label>Slot Title:
+                                <input 
+                                    id="slotTitle" 
+                                    type="text" 
+                                    name="slotTitle" 
+                                    value={formData.slotTitle} 
+                                    onChange={handleInputChange} 
+                                    placeholder="e.g. COMP 307 Office Hours" 
+                                    required 
+                                />
+                                </label>
 
-                      <div className="slot-actions">
-                        <label className="visibility-toggle">
-                            <span>{slot.isPublic ? "Public" : "Private"}</span>
-                            <input
-                                type="checkbox"
-                                checked={slot.isPublic}
-                                onChange={() => toggleVisibility(slot.id)}
-                            />
-                            <span className="toggle-slider" aria-hidden="true"></span>
-                        </label>
+                                <label>Date:
+                                    <input 
+                                        id="date" 
+                                        type="date" 
+                                        name="date" 
+                                        value={formData.date} 
+                                        onChange={handleInputChange} 
+                                        required 
+                                    />
+                                </label>
 
-                        <button className="invite-button" type="button" onClick={() => generateInviteURL(slot)}>
-                            Generate
-                        </button>
+                                <label>Start Time:
+                                    <input 
+                                        id="startTime" 
+                                        type="time" 
+                                        name="startTime" 
+                                        value={formData.startTime} 
+                                        onChange={handleInputChange} 
+                                        required 
+                                    />
+                                </label>
 
-                        <button className="delete-button" type="button" onClick={() => deleteSlot(slot.id)}>
-                            Delete
-                        </button>
-                      </div>
-                    </div>
-                    ))}
-                </div>
-        )}
-          </section>
-        </div>
-      </main>
+                                <label>End Time:
+                                    <input 
+                                        id="endTime" 
+                                        type="time" 
+                                        name="endTime" 
+                                        value={formData.endTime} 
+                                        onChange={handleInputChange} 
+                                        required 
+                                    />
+                                </label>
+
+                                <button className="submit-button" type="submit">
+                                    Create Slot
+                                </button>
+                            </form>
+                        </section>
+
+                        {/* SLOT LIST */}
+                        <section className="slots-section">
+                            <h3 className="form-header">Your Slots</h3>
+                    
+                            {slots.length === 0 ? (
+                                <p>You have no slots created yet.</p>
+                            ) : (
+                                <div className="slots-list">
+                                    {slots.map((slot) => (
+                                        <div key={slot.id} className="slot-card">
+                                            <div className="slot-details">
+                                                <h4>{slot.slotTitle}</h4>
+                                                <h3>{slot.date}</h3>
+                                                <p>{slot.startTime} to {slot.endTime}</p>
+                                            </div>
+
+                                            <div className="slot-actions">
+                                                <label className="visibility-toggle">
+                                                    <span>{slot.isPublic ? "Public" : "Private"}</span>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={slot.isPublic}
+                                                        onChange={() => toggleVisibility(slot.id)}
+                                                    />
+                                                    <span className="toggle-slider" aria-hidden="true"></span>
+                                                </label>
+
+                                                <button className="invite-button" type="button" onClick={() => generateInviteURL(slot)}>
+                                                    Invite
+                                                </button>
+
+                                                <button className="delete-button" type="button" onClick={() => deleteSlot(slot.id)}>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+                    </>
+                )}
+       
+            </div>
+        </main>
     </div>
   );
 }
