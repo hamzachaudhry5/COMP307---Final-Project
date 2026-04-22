@@ -1,9 +1,13 @@
-from typing import Optional
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
 from pydantic import BaseModel, field_validator
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, SQLModel, Relationship
+from zoneinfo import ZoneInfo
 import enum
 
+if TYPE_CHECKING:
+    from models.booking import BookingSlot
+    from models.booking import Reservation
 
 class UserRole(str, enum.Enum):
     owner = "owner"
@@ -18,7 +22,13 @@ class User(SQLModel, table=True):
     last_name: str
     role: UserRole = Field(default=UserRole.user)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    invite_token: Optional[str] = Field(default=None, unique=True, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("America/Toronto")))
+    
+    # Relationships
+    owned_slots: List["BookingSlot"] = Relationship(back_populates="owner")
+    reservations: List["Reservation"] = Relationship(back_populates="user")
+    
     @staticmethod
     def resolve_role(email: str) -> UserRole:
         if email.endswith("@mcgill.ca"):
@@ -62,3 +72,8 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+class InviteLinkResponse(BaseModel):
+    invite_token: str
+    invite_url: str
