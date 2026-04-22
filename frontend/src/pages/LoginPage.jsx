@@ -27,7 +27,7 @@ function LoginPage() {
             const user = await getMe(tokenRes.access_token);
 
             login(user, tokenRes.access_token);
-            navigate("/");
+            navigate("/dashboard");
 
         } catch (err) {
             setError(err.message);

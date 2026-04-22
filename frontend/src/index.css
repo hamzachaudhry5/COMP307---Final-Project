@@ -26,11 +26,9 @@ button {
   background-color: #a6192e;
   color: white;
 }
-
-button.secondary {
-  background-color: white;
-  color: #1f2937;
-  border: 1px solid #d1d5db;
+/* logout button */
+.logout-button {
+  margin-left: 10px;
 }
 
 .container {
@@ -91,9 +89,12 @@ button.secondary {
   max-width: 600px;
 }
 
-.hero-buttons {
-  display: flex;
-  gap: 14px;
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0;
+  text-align: center;
 }
 
 .hero-cards {
@@ -156,16 +157,17 @@ button.secondary {
   margin-bottom: 28px;
 }
 
-.submit-button {
+.submit-button, .delete-button {
   background-color: #a6192e;
   color: white;
   padding: 14px 16px;
   border-radius: 12px;
   font-size: 1rem;
   width: 100%;
+  text-align: center;
 }
 
-.login-form {
+.login-form, .slot-form {
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -173,14 +175,14 @@ button.secondary {
   margin: 0 auto;
 }
 
-.login-form label {
+.login-form label, .slot-form label {
   display: flex;
   flex-direction: column;
   gap: 8px;
   font-weight: 600;
 }
 
-.login-form input {
+.login-form input, .slot-form input {
   width: 100%;
   padding: 14px 16px;
   border: 1px solid #cbd5e1;
@@ -188,7 +190,155 @@ button.secondary {
   font-size: 1rem;
 }
 
-.login-form input:focus {
+.login-form input:focus, .slot-form input:focus {
   outline: none;
   border-color: #0f172a;
+}
+
+/* OwnerDashboard */
+
+.dashboard-page {
+  padding: 40px 20px;
+}
+
+.dash-header {
+  gap: 12px;
+  margin: 0 auto 28px;
+  margin-top: 14px;
+}
+
+.dashboard-section {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
+}
+
+.form-header {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.submit-button, .invite-button {
+  background-color: #a6192e;
+  color: white;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 1rem;
+  width: fit-content;
+}
+
+.delete-button {
+  background-color: #4e4e4e;
+  color: #ffffff;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 1rem;
+  width: fit-content;
+}
+
+.slots-section {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.slots-list {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.slot-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background-color: #f8fafc;
+}
+
+.slot-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.slot-details h4 {
+  font-size: 1.1rem;
+}
+
+.slot-details h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.slot-details p {
+  color: #64748b;
+}
+
+.slot-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #374151;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.visibility-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 54px;
+  height: 30px;
+  border-radius: 999px;
+  background-color: #cbd5e1;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: white;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.visibility-toggle input:checked + .toggle-slider {
+  background-color: #a6192e;
+}
+
+.visibility-toggle input:checked + .toggle-slider::before {
+  transform: translateX(24px);
+}
+
+.visibility-toggle input:focus-visible + .toggle-slider {
+  box-shadow: 0 0 0 4px rgba(166, 25, 46, 0.18);
 }

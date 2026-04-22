@@ -30,8 +30,10 @@ function LandingPage() {
               professors, and teaching assistants.
             </p>
 
-            <div className="hero-buttons">
-              <button>Get Started</button>
+            <div>
+              <Link className="submit-button hero-cta" to="/register">
+                Get Started
+              </Link>
             </div>
           </div>
           <div className="hero-cards" aria-label="Platform features">
