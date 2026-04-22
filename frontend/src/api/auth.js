@@ -43,5 +43,28 @@ export async function getMe(token) {
     }
 
     return res.json();
-    
+}
+
+export async function refreshAccessToken(refreshToken) {
+    const res = await fetch(`${BASE_URL}/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+    });
+
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Token refresh failed");
+    }
+    return res.json();
+}
+
+export async function logoutUser(refreshToken) {
+    const res = await fetch(`${BASE_URL}/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+    });
+
+    return res.json().catch(() => ({}));
 }

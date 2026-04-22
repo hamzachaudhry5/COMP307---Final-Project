@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { loginUser, getMe } from "../api/auth";
 
 function LoginPage() {
     const { login } = useAuth();
@@ -23,10 +22,7 @@ function LoginPage() {
 
         //backend response
         try {
-            const tokenRes = await loginUser(email, password);
-            const user = await getMe(tokenRes.access_token);
-
-            login(user, tokenRes.access_token);
+            await login(email, password);
             navigate("/dashboard");
 
         } catch (err) {
