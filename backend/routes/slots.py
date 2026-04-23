@@ -43,12 +43,12 @@ def create_slot(
 
     for week in range(recurring_weeks):
         delta = timedelta(weeks=week)
-        slot = BookingSlot(
-            **booking_slot.model_dump(),
-            owner_id=owner.user_id,
-            start_time=booking_slot.start_time + delta,
-            end_time=booking_slot.end_time + delta,
-        )
+        data = booking_slot.model_dump()
+        data["start_time"] = booking_slot.start_time + delta
+        data["end_time"] = booking_slot.end_time + delta
+        data["owner_id"] = owner.user_id
+        slot = BookingSlot(**data)
+        
         session.add(slot)
         created_slots.append(slot)
 
@@ -80,12 +80,12 @@ def create_bulk_slots(
         recurring_weeks = slot_data.recurrence_weeks if (slot_data.is_recurring and slot_data.recurrence_weeks and slot_data.recurrence_weeks > 1) else 1
         for week in range(recurring_weeks):
             delta = timedelta(weeks=week)
-            slot = BookingSlot(
-                **slot_data.model_dump(),
-                owner_id=owner.user_id,
-                start_time=slot_data.start_time + delta,
-                end_time=slot_data.end_time + delta,
-            )
+            data = slot_data.model_dump()
+            data["start_time"] = slot_data.start_time + delta
+            data["end_time"] = slot_data.end_time + delta
+            data["owner_id"] = owner.user_id
+            slot = BookingSlot(**data)
+
             session.add(slot)
             created_slots.append(slot)
 

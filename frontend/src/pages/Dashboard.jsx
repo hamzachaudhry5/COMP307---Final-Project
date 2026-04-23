@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import api from "../api/client";
 
 function Dashboard() {
     const navigate = useNavigate();
@@ -10,24 +11,59 @@ function Dashboard() {
     const [slots, setSlots] = useState([]);
     const [formData, setFormData] = useState({
         slotTitle: "",
+        description: "",
+        slotType: "",
         date: "",
         startTime: "",
-        endTime: ""
+        endTime: "",
+        isRecurring: false,
+        recurrenceWeeks: 1,
+        maxParticipants: 1
     });
     const [appointments, setAppointments] = useState([])
+    const [weekOffset, setWeekOffset] = useState(0);
+    const weekDays = getWeekDays(weekOffset);
+    const weekLabel = getWeekRange(weekDays);
+
+    useEffect(() => {
+        async function loadData() {
+            try {
+                const myReservations = await api.reservations.getMy();
+                setAppointments(myReservations);
+
+                if (isOwner) {
+                    const mySlots = await api.slots.getMine();
+                    setSlots(mySlots);
+                }
+            } catch(err) {
+                console.error(err);
+            }
+        }
+        loadData();
+    }, []);
 
     function handleInputChange(e) {
-        const { name, value } = e.target;
+        const { name, value, type, checked } = e.target;
         setFormData(prevData => ({
             ...prevData,
-            [name]: value
+            [name]: type === "checkbox" ? checked : value
         }));
     }
 
-    function createSlot(e) {
+    async function createSlot(e) {
         e.preventDefault();
 
-        const { slotTitle, date, startTime, endTime } = formData;
+        const { 
+            slotTitle, 
+            description, 
+            slotType,
+            date, 
+            startTime, 
+            endTime,
+            isRecurring,
+            recurrenceWeeks,
+            maxParticipants
+        } = formData;
         if (!slotTitle || !date || !startTime || !endTime) {
             alert("Please fill in all fields.");
             return;
@@ -37,24 +73,40 @@ function Dashboard() {
             return;
         }
 
-        const newSlot = {
-            id: Date.now(),
-            slotTitle,
-            date,
-            startTime,
-            endTime,
-            isPublic: false
-        };
+        try {
+            const start = new Date(`${date}T${startTime}`);
+            const end = new Date(`${date}T${endTime}`);
 
-        setSlots(prevSlots => [...prevSlots, newSlot]);
+            const newSlot = await api.slots.create({
+                title: slotTitle,
+                description: description || "",
+                slot_type: slotType || "request",
+                start_time: start.toISOString(),
+                end_time: end.toISOString(),
+                is_recurring: isRecurring,
+                recurrence_weeks: isRecurring ? Number(recurrenceWeeks) : 1,
+                max_participants: Number(maxParticipants)
+            });
 
-        // Resets form
-        setFormData({
-            slotTitle: "",
-            date: "",
-            startTime: "",
-            endTime: ""
-        });
+            console.log("New slot: ", newSlot);
+            setSlots(prev => [...prev, ...newSlot]);
+
+            // Resets form
+            setFormData({
+                slotTitle: "",
+                description: "",
+                date: "",
+                startTime: "",
+                endTime: "",
+                isRecurring: false,
+                recurrenceWeeks: 1,
+                maxParticipants: 1
+            });
+
+        } catch (err) {
+            console.error(err);
+            alert("Failed to create slot");
+        }
     }
 
     function deleteSlot(slotId) {
@@ -85,6 +137,40 @@ function Dashboard() {
         window.location.href = `mailto:${email}`;
     }
 
+    function getWeekDays(offset = 0) {
+        const today = new Date();
+        // const sundayOffset = -today.getDay();
+
+        const sunday = new Date(today);
+        sunday.setDate(today.getDate() - today.getDay() + offset * 7);
+
+        return Array.from({ length: 7 }, (_, i) =>{
+            const d = new Date(sunday);
+            d.setDate(sunday.getDate() + i);
+            return d;
+        });
+    }
+    function getWeekRange(weekDays) {
+        const start = weekDays[0];
+        const end = weekDays[6];
+
+        const options = { month: "short", day: "numeric" };
+
+        const startStr = start.toLocaleDateString("en-US", options);
+        const endStr = end.toLocaleDateString("en-US", options);
+
+        return `${startStr} - ${endStr}`;
+    }
+
+    function isSameDay(dateStr, day) {
+        const d = new Date(dateStr);
+        return (
+            d.getFullYear() === day.getFullYear() &&
+            d.getMonth() === day.getMonth() &&
+            d.getDate() === day.getDate()
+        );
+    }
+
   return (
     <div>
         {/* Navbar */}
@@ -106,22 +192,55 @@ function Dashboard() {
 
                 {/* User features */}
                 <section className="dashboard-section">
-                    <h3 className="form-header">Your Appointments</h3>
+                    <h3 className="form-header">Your Bookings:</h3>
+                    
+                    <div className="week-nav">
+                        <button onClick={() => setWeekOffset(prev => prev -1)}>
+                            &lt;
+                        </button>
+                        <h3 className="week-title">{weekLabel}</h3>
+                        <button onClick={() => setWeekOffset(prev => prev +1)}>
+                            &gt;
+                        </button>
+                    </div>
+                    
 
-                    {appointments.length === 0 ? (
-                        <p>No appointments yet.</p>
-                    ) : (
-                        appointments.map(appt =>(
-                            // NOTE appt fields all placeholders until backend implementation
-                            <div key="{appt.id}" className="appointment-card">
-                                <p>{appt.title}</p>
-                                <p>{appt.date} {appt.time}</p>
+                    <div className="week-grid">
+                        {weekDays.map((day, i) => (
+                            <div key={i} className="week-day">
+                                <div className="week-day-header">
+                                    <div className="week-day-initial">
+                                        {day.toLocaleDateString("en-US", {weekday: "short"})[0]}
+                                    </div>
+                                    <div className="week-day-number">
+                                        {day.getDate()}
+                                    </div>
+                                </div>
 
-                                <button onClick={() => emailOwner(appt.ownerEmail)}>Message Owner</button>
-                                <button>Cancel Appointment</button>
+                                <div className="week-day-slots">
+                                    {[...appointments, ...(isOwner ? slots : [])]
+                                        .filter(item => isSameDay(item.start_time, day))
+                                        .map(item => (
+                                            <div key={item.id} className="calendar-slot">
+                                                <div className="slot-time">
+                                                    {new Date(item.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {" - "}
+                                                    {new Date(item.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                                <div className="slot-title">
+                                                    {item.title}
+                                                </div>
+                                            </div>
+                                        ))}
+
+                                    {[...appointments, ...(isOwner ? slots : [])]
+                                        .filter(item => isSameDay(item.start_time, day)).length === 0 && (
+                                            <div className="week-day-empty">No Events</div>
+                                        )}
+                                </div>
                             </div>
-                        ))
-                    )}
+                        ))}
+                    </div>
 
                     <button className="submit-button">
                         Book Appointment
@@ -146,6 +265,14 @@ function Dashboard() {
                                     placeholder="e.g. COMP 307 Office Hours" 
                                     required 
                                 />
+                                </label>
+
+                                <label>Slot Type:
+                                    <select name="slotType" value={formData.slotType} onChange={handleInputChange} required>
+                                        <option value="request">Request</option>
+                                        <option value="group">Group</option>
+                                        <option value="office_hours">Office Hours</option>
+                                    </select>
                                 </label>
 
                                 <label>Date:
@@ -181,6 +308,52 @@ function Dashboard() {
                                     />
                                 </label>
 
+                                <label>Max Participants:
+                                    <input
+                                        type="number"
+                                        name="maxParticipants"
+                                        value={formData.maxParticipants}
+                                        min="1"
+                                        onChange={handleInputChange}
+                                    />
+                                </label>
+
+                                <label>Recurring
+                                    <input
+                                        type="checkbox"
+                                        name="isRecurring"
+                                        checked={formData.isRecurring}
+                                        onChange={(e) =>
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                isRecurring: e.target.checked
+                                            }))
+                                        }    
+                                    />
+                                </label>
+
+                                {formData.isRecurring && (
+                                    <label>Repeat (weeks):
+                                        <input
+                                            type="number"
+                                            name="recurrenceWeeks"
+                                            value={formData.recurrenceWeeks}
+                                            min="1"
+                                            onChange={handleInputChange}
+                                        />
+                                    </label>
+                                )}
+
+                                <label>Description
+                                    <textarea
+                                        name="description"
+                                        value={formData.description}
+                                        onChange={handleInputChange}
+                                        placeholder="Details about this slot..."
+                                        rows={3}
+                                    />
+                                </label>
+
                                 <button className="submit-button" type="submit">
                                     Create Slot
                                 </button>
@@ -198,9 +371,8 @@ function Dashboard() {
                                     {slots.map((slot) => (
                                         <div key={slot.id} className="slot-card">
                                             <div className="slot-details">
-                                                <h4>{slot.slotTitle}</h4>
-                                                <h3>{slot.date}</h3>
-                                                <p>{slot.startTime} to {slot.endTime}</p>
+                                                <h4>{slot.title}</h4>
+                                                <p>{slot.start_time} to {slot.end_time}</p>
                                             </div>
 
                                             <div className="slot-actions">
