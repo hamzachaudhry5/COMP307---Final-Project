@@ -17,6 +17,7 @@ from models.users import User
 from models.users import UserRole
 from database.session import get_session
 from security import get_current_user, get_owner
+from utils import check_reservation_overlap
 
 router = APIRouter(prefix="/meeting-requests", tags=["Meeting Requests"])
 
@@ -33,11 +34,12 @@ def send_request(
         raise HTTPException(404, "Owner not found")
     if owner.role != UserRole.owner:
         raise HTTPException(400, "Meeting requests can only be sent to owners")
-
     if owner.user_id == user.user_id:
         raise HTTPException(400, "Cannot send a meeting request to yourself")
     if meeting_request.end_time <= meeting_request.start_time:
         raise HTTPException(400, "end_time must be after start_time")
+    
+    check_reservation_overlap(user_id=user.user_id, start_time=meeting_request.start_time, end_time=meeting_request.end_time, session=session)
 
     req = MeetingRequest(**meeting_request.model_dump(), requester_id=user.user_id)
     session.add(req)

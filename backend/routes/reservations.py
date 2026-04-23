@@ -14,6 +14,7 @@ from models.booking import (
 from models.users import User
 from database.session import get_session
 from security import get_current_user, get_owner
+from utils import check_reservation_overlap
 
 router = APIRouter(prefix="/reservations", tags=["Reservations"])
 
@@ -55,6 +56,9 @@ def reserve_slot(
     if duplicate_check:
         raise HTTPException(400, "You have already reserved this slot")
 
+    # Check booking overlap
+    check_reservation_overlap(user_id=user.user_id, start_time=slot.start_time, end_time=slot.end_time, session=session)
+    
     if slot.max_participants is not None and current_reservations_count + 1 >= slot.max_participants:
         slot.status = SlotStatus.BOOKED
 
