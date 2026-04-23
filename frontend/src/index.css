@@ -342,3 +342,89 @@ button {
 .visibility-toggle input:focus-visible + .toggle-slider {
   box-shadow: 0 0 0 4px rgba(166, 25, 46, 0.18);
 }
+
+/* CALENDAR */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.week-title {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+.week-nav button {
+  background: none;
+  color: #a6192e;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.week-day {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px;
+  min-height: 160px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.week-day-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.week-day-initial {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #a6192e;
+  line-height: 1;
+}
+
+.week-day-number {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.week-day-slots {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.calendar-slot {
+  background: #a6192e;
+  color: white;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+}
+
+.slot-time {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.slot-title {
+  font-size: 0.8rem;
+}
