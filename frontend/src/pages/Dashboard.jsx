@@ -5,7 +5,7 @@ import api from "../api/client";
 
 function Dashboard() {
     const navigate = useNavigate();
-    const { user, logout } = useAuth();
+    const { user, logout, isLoading } = useAuth();
     const isOwner = user?.role === "owner"; // Role check placeholder
 
     const [slots, setSlots] = useState([]);
@@ -20,12 +20,18 @@ function Dashboard() {
         recurrenceWeeks: 1,
         maxParticipants: 1
     });
-    const [appointments, setAppointments] = useState([])
+    const [appointments, setAppointments] = useState([])    
     const [weekOffset, setWeekOffset] = useState(0);
     const weekDays = getWeekDays(weekOffset);
     const weekLabel = getWeekRange(weekDays);
 
+    /* Private slots */
+    const visibleOwnerSlots = isOwner ? slots.filter(slot => slot.isPublic) : [];
+    const calendarItems = [...appointments, ...visibleOwnerSlots];
+
     useEffect(() => {
+        if (isLoading ||!user) return; // Wait for auth to load (refresh)
+
         async function loadData() {
             try {
                 const myReservations = await api.reservations.getMy();
@@ -33,14 +39,19 @@ function Dashboard() {
 
                 if (isOwner) {
                     const mySlots = await api.slots.getMine();
-                    setSlots(mySlots);
+                    setSlots(
+                        mySlots.map(slot => ({
+                            ...slot,
+                            isPublic: slot.is_public ?? slot.isPublic ?? false
+                        }))
+                    );
                 }
             } catch(err) {
                 console.error(err);
             }
         }
         loadData();
-    }, []);
+    }, [isLoading, user]);
 
     function handleInputChange(e) {
         const { name, value, type, checked } = e.target;
@@ -109,8 +120,18 @@ function Dashboard() {
         }
     }
 
-    function deleteSlot(slotId) {
-        setSlots(prevSlots => prevSlots.filter(slot => slot.id !== slotId));
+    async function deleteSlot(slotId) {
+        const confirmed = window.confirm("Delete this slot?");
+        if (!confirmed) return;
+
+        try {
+            await api.slots.delete(slotId);
+            setSlots(prev => prev.filter(slot => slot.id !== slotId));
+
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete slot");
+        }
     }
 
     function generateInviteURL(slot) {
@@ -118,14 +139,28 @@ function Dashboard() {
         alert(`Invite URL generated for ${slot.slotTitle}!`);
     }
 
-    function toggleVisibility(slotId) {
+    async function toggleVisibility(slotId) {
+    try {
+        const updatedSlot = await api.slots.activate(slotId);
+
         setSlots(prevSlots =>
             prevSlots.map(slot =>
                 slot.id === slotId
-                    ? { ...slot, isPublic: !slot.isPublic }
+                    ? {
+                        ...slot,
+                        ...updatedSlot,
+                        isPublic:
+                            updatedSlot?.isPublic ??
+                            updatedSlot?.is_public ??
+                            true
+                    }
                     : slot
             )
         );
+        } catch (err) {
+            console.error(err);
+            alert(err.message || "Failed to update slot visibility");
+        }
     }
 
     function handleLogout(){
@@ -168,6 +203,14 @@ function Dashboard() {
             d.getFullYear() === day.getFullYear() &&
             d.getMonth() === day.getMonth() &&
             d.getDate() === day.getDate()
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="loading-screen">
+                <h2>Loading...</h2>
+            </div>
         );
     }
 
@@ -218,7 +261,7 @@ function Dashboard() {
                                 </div>
 
                                 <div className="week-day-slots">
-                                    {[...appointments, ...(isOwner ? slots : [])]
+                                    {calendarItems
                                         .filter(item => isSameDay(item.start_time, day))
                                         .map(item => (
                                             <div key={item.id} className="calendar-slot">
@@ -233,7 +276,7 @@ function Dashboard() {
                                             </div>
                                         ))}
 
-                                    {[...appointments, ...(isOwner ? slots : [])]
+                                    {calendarItems
                                         .filter(item => isSameDay(item.start_time, day)).length === 0 && (
                                             <div className="week-day-empty">No Events</div>
                                         )}
@@ -381,6 +424,7 @@ function Dashboard() {
                                                     <input
                                                         type="checkbox"
                                                         checked={slot.isPublic}
+                                                        disabled={slot.isPublic}
                                                         onChange={() => toggleVisibility(slot.id)}
                                                     />
                                                     <span className="toggle-slider" aria-hidden="true"></span>
