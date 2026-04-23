@@ -74,6 +74,7 @@ class BookingSlotUpdate(SQLModel):
     description: Optional[str] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+    status: Optional[SlotStatus] = None
 
 
 class BookingSlotCreate(BookingSlotBase):
