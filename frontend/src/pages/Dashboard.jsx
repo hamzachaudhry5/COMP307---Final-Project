@@ -74,15 +74,12 @@ function Dashboard() {
         }
 
         try {
-            const start = new Date(`${date}T${startTime}`);
-            const end = new Date(`${date}T${endTime}`);
-
             const newSlot = await api.slots.create({
                 title: slotTitle,
                 description: description || "",
                 slot_type: slotType || "request",
-                start_time: start.toISOString(),
-                end_time: end.toISOString(),
+                start_time: `${date}T${startTime}:00`,
+                end_time: `${date}T${endTime}:00`,
                 is_recurring: isRecurring,
                 recurrence_weeks: isRecurring ? Number(recurrenceWeeks) : 1,
                 max_participants: Number(maxParticipants)
