@@ -294,6 +294,15 @@ button {
   flex-shrink: 0;
 }
 
+.description-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 14px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
 .visibility-toggle {
   display: inline-flex;
   align-items: center;
@@ -427,4 +436,15 @@ button {
 
 .slot-title {
   font-size: 0.8rem;
+}
+
+/* Booking Page */
+
+.owner-select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #cbd5e1;
+  margin-top: 8px;
+  border-radius: 12px;
+  font-size: 1rem;
 }

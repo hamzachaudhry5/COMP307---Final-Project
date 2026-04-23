@@ -21,6 +21,7 @@ function Dashboard() {
         maxParticipants: 1
     });
     const [appointments, setAppointments] = useState([])    
+    const [requests, pendingRequests] = useState([]);
     const [weekOffset, setWeekOffset] = useState(0);
     const weekDays = getWeekDays(weekOffset);
     const weekLabel = getWeekRange(weekDays);
@@ -30,28 +31,41 @@ function Dashboard() {
     const calendarItems = [...appointments, ...visibleOwnerSlots];
 
     useEffect(() => {
-        if (isLoading ||!user) return; // Wait for auth to load (refresh)
+        if (isLoading || !user) return;
 
         async function loadData() {
             try {
                 const myReservations = await api.reservations.getMy();
                 setAppointments(myReservations);
+            } catch (err) {
+                console.error("Failed to load reservations:", err);
+            }
 
-                if (isOwner) {
+            if (isOwner) {
+                try {
+                    const myRequests = await api.reservations.getIncoming();
+                    pendingRequests(myRequests);
+                } catch (err) {
+                    console.error("Failed to load incoming requests:", err);
+                    pendingRequests([]);
+                }
+
+                try {
                     const mySlots = await api.slots.getMine();
                     setSlots(
                         mySlots.map(slot => ({
                             ...slot,
-                            isPublic: slot.is_public ?? slot.isPublic ?? false
+                            isPublic: slot.status === "active"
                         }))
                     );
+                } catch (err) {
+                    console.error("Failed to load slots:", err);
                 }
-            } catch(err) {
-                console.error(err);
             }
         }
+        
         loadData();
-    }, [isLoading, user]);
+    }, [isLoading, user, isOwner]);
 
     function handleInputChange(e) {
         const { name, value, type, checked } = e.target;
@@ -134,16 +148,24 @@ function Dashboard() {
         }
     }
 
-    function generateInviteURL(slot) {
-        // Placeholder
-        alert(`Invite URL generated for ${slot.slotTitle}!`);
+    async function generateInviteURL(slot) {
+        try {
+            const inviteLink = await api.slots.createInviteLink();
+            const inviteURL = `${window.location.origin}/invite/${inviteLink.token}`;
+            navigator.clipboard.writeText(inviteURL);
+            alert("Invite URL copied to clipboard!");
+        }
+        catch (err) {
+            console.error(err);
+            alert("Failed to generate invite link");
+        }
     }
 
     async function toggleVisibility(slotId) {
         const slot = slots.find(s => s.id === slotId);
         if (!slot) return;
 
-        const newIsPublic = !slot.isPublic;
+        const newIsPublic = slot.isPublic ? "private" : "active";
 
         try {
             const updatedSlot = await api.slots.update(slotId, {
@@ -156,7 +178,7 @@ function Dashboard() {
                         ? {
                             ...s,
                             ...updatedSlot,
-                            isPublic: updatedSlot?.is_public ?? newIsPublic
+                            isPublic: (updatedSlot?.is_public ?? newIsPublic) === "active"
                         }
                         : s
                 )
@@ -164,6 +186,26 @@ function Dashboard() {
         } catch (err) {
             console.error(err);
             alert(err.message || "Failed to update visibility");
+        }
+    }
+
+    async function handleAcceptRequest(requestId) {
+        try {
+            await api.meeting.accept(requestId);
+            pendingRequests(prev => prev.filter(r => r.id !== requestId));
+        } catch (err) {
+            console.error(err);
+            alert("Failed to accept request");
+        }
+    }
+
+    async function handleDeclineRequest(requestId) {
+        try {
+            await api.meeting.decline(requestId);
+            pendingRequests(prev => prev.filter(r => r.id !== requestId));
+        } catch (err) {
+            console.error(err);
+            alert("Failed to decline request");
         }
     }
 
@@ -208,6 +250,24 @@ function Dashboard() {
             d.getMonth() === day.getMonth() &&
             d.getDate() === day.getDate()
         );
+    }
+
+    function formatSlotRange(startTime, endTime) {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+
+        const dateLabel = start.toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+        });
+
+        const timeOptions = {
+            hour: "numeric",
+            minute: "2-digit",
+        };
+
+        return `${dateLabel}, ${start.toLocaleTimeString("en-US", timeOptions)} - ${end.toLocaleTimeString("en-US", timeOptions)}`;
     }
 
     if (isLoading) {
@@ -289,14 +349,37 @@ function Dashboard() {
                         ))}
                     </div>
 
-                    <button className="submit-button">
+                    <button className="submit-button" onClick={() => navigate("/booking")}>
                         Book Appointment
                     </button>
                 </section>
 
                 {/* OWNER FEATURES */}
                 {isOwner && (
-                    <>
+                    <>  
+                        {/* PENDING REQUESTS */}
+                        <section>
+                            <h3 className="slots-section">Pending Requests</h3>
+                            {requests.length === 0 ? (
+                                <p>No pending requests.</p>
+                            ) : (
+                                <div className="requests-list">
+                                    {requests.map(req => (
+                                        <div key={req.id} className="request-card">
+                                            <div>
+                                                <strong>{req.reserver.first_name} {req.reserver.last_name}</strong> wants to book <em>{req.slot.title}</em>
+                                            </div>
+                                            <div className="request-actions">
+                                                <button onClick={() => handleAcceptRequest(req.id)}>Accept</button>
+                                                <button onClick={() => handleDeclineRequest(req.id)}>Decline</button>
+                                                <button onClick={() => emailOwner(req.reserver.email)}>Email</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </section>
+
                         {/* CREATE SLOT */}
                         <section className="dashboard-section">
                             <h3 className="form-header">Create a slot</h3>
@@ -392,7 +475,7 @@ function Dashboard() {
                                 )}
 
                                 <label>Description
-                                    <textarea
+                                    <textarea className="description-textarea"
                                         name="description"
                                         value={formData.description}
                                         onChange={handleInputChange}
@@ -419,7 +502,7 @@ function Dashboard() {
                                         <div key={slot.id} className="slot-card">
                                             <div className="slot-details">
                                                 <h4>{slot.title}</h4>
-                                                <p>{slot.start_time} to {slot.end_time}</p>
+                                                <p>{formatSlotRange(slot.start_time, slot.end_time)}</p>
                                             </div>
 
                                             <div className="slot-actions">
