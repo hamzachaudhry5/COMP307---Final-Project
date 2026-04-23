@@ -3,7 +3,6 @@ from datetime import timedelta
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from models.booking import (
@@ -317,7 +316,7 @@ def get_owner_active_slots(
     ).all()
 
 
-# Helper 
+# Helpers
 def _get_owned_slot(slot_id: int, owner: User, session: Session) -> BookingSlot:
     slot = session.get(BookingSlot, slot_id)
     if not slot or slot.owner_id != owner.user_id:

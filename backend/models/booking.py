@@ -113,7 +113,7 @@ class ReservationRead(SQLModel):
         from_attributes = True
 
 
-### GroupMeeting ──────────────────────────────────────────────────────────────
+### GroupMeeting 
 class GroupMeetingBase(SQLModel):
     title: str = Field(max_length=200)
     description: Optional[str] = Field(default=None)
