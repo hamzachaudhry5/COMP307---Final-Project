@@ -140,26 +140,30 @@ function Dashboard() {
     }
 
     async function toggleVisibility(slotId) {
-    try {
-        const updatedSlot = await api.slots.activate(slotId);
+        const slot = slots.find(s => s.id === slotId);
+        if (!slot) return;
 
-        setSlots(prevSlots =>
-            prevSlots.map(slot =>
-                slot.id === slotId
-                    ? {
-                        ...slot,
-                        ...updatedSlot,
-                        isPublic:
-                            updatedSlot?.isPublic ??
-                            updatedSlot?.is_public ??
-                            true
-                    }
-                    : slot
-            )
-        );
+        const newIsPublic = !slot.isPublic;
+
+        try {
+            const updatedSlot = await api.slots.update(slotId, {
+                is_public: newIsPublic
+            });
+
+            setSlots(prevSlots =>
+                prevSlots.map(s =>
+                    s.id === slotId
+                        ? {
+                            ...s,
+                            ...updatedSlot,
+                            isPublic: updatedSlot?.is_public ?? newIsPublic
+                        }
+                        : s
+                )
+            );
         } catch (err) {
             console.error(err);
-            alert(err.message || "Failed to update slot visibility");
+            alert(err.message || "Failed to update visibility");
         }
     }
 
@@ -424,7 +428,6 @@ function Dashboard() {
                                                     <input
                                                         type="checkbox"
                                                         checked={slot.isPublic}
-                                                        disabled={slot.isPublic}
                                                         onChange={() => toggleVisibility(slot.id)}
                                                     />
                                                     <span className="toggle-slider" aria-hidden="true"></span>
