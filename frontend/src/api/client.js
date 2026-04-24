@@ -11,30 +11,6 @@ async function fetchAuth(endpoint, options = {}) {
   });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "Error");
   return res.json();
-
-  // // DEBUG
-  // let data;
-  // try {
-  //   data = await res.json();
-  // } catch (e) {
-  //   data = null;
-  // }
-
-  // if (!res.ok) {
-  //   console.error("API ERROR:", data);
-
-  //   const message =
-  //     (Array.isArray(data?.detail)
-  //       ? data.detail.map(d => d.msg || d.message).join(", ")
-  //       : data?.detail) ||
-  //     data?.message ||
-  //     JSON.stringify(data) ||
-  //     "Request failed";
-
-  //   throw new Error(message);
-  // }
-
-  // return data;
 }
 
 async function fetchPub(endpoint, options = {}) {
