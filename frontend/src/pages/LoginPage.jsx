@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
@@ -9,6 +9,8 @@ function LoginPage() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+
+    const location = useLocation();
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -23,7 +25,8 @@ function LoginPage() {
         //backend response
         try {
             await login(email, password);
-            navigate("/dashboard");
+            const redirectTo = location.state?.from || "/dashboard";
+            navigate(redirectTo);
 
         } catch (err) {
             setError(err.message);

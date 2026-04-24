@@ -16,6 +16,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/booking" element={<Booking />} />
+          <Route path="/booking/invite/:token" element={<Booking />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

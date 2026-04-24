@@ -196,13 +196,20 @@ function Dashboard() {
     }
 
     async function generateInviteURL(slot) {
-        try {
-            const inviteLink = await api.slots.createInviteLink();
-            const inviteURL = `${window.location.origin}/invite/${inviteLink.token}`;
-            navigator.clipboard.writeText(inviteURL);
-            alert("Invite URL copied to clipboard!");
-        }
-        catch (err) {
+         try {
+            const res = await api.slots.createInviteLink();
+
+            let inviteURL = res.invite_url;
+
+            // ensure full frontend URL
+            if (inviteURL.startsWith("/")) {
+                inviteURL = `http://localhost:3000${inviteURL}`;
+            }
+
+            await navigator.clipboard.writeText(inviteURL);
+            alert("Invite URL copied:\n" + inviteURL);
+
+        } catch (err) {
             console.error(err);
             alert("Failed to generate invite link");
         }
