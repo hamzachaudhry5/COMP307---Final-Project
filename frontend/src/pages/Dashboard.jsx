@@ -18,7 +18,10 @@ function Dashboard() {
         endTime: "",
         isRecurring: false,
         recurrenceWeeks: 1,
-        maxParticipants: 1
+        maxParticipants: 1,
+
+        mode: "single",
+        selectedDays: []
     });
     const [appointments, setAppointments] = useState([])    
     const [pendingRequests, setPendingRequests] = useState([]);
@@ -74,9 +77,10 @@ function Dashboard() {
     }, [isLoading, user, isOwner]);
 
     function handleInputChange(e) {
-        const { name, value, type, checked } = e.target;
-        setFormData(prevData => ({
-            ...prevData,
+    const { name, value, type, checked } = e.target;
+
+        setFormData(prev => ({
+            ...prev,
             [name]: type === "checkbox" ? checked : value
         }));
     }
@@ -93,9 +97,11 @@ function Dashboard() {
             endTime,
             isRecurring,
             recurrenceWeeks,
-            maxParticipants
+            maxParticipants,
+            mode,
+            selectedDays // +++++
         } = formData;
-        if (!slotTitle || !date || !startTime || !endTime) {
+        if (!slotTitle || !date || !startTime || !endTime || !slotType) {
             alert("Please fill in all fields.");
             return;
         }
@@ -105,30 +111,68 @@ function Dashboard() {
         }
 
         try {
-            const newSlot = await api.slots.create({
-                title: slotTitle,
-                description: description || "",
-                slot_type: slotType || "request",
-                start_time: `${date}T${startTime}:00`,
-                end_time: `${date}T${endTime}:00`,
-                is_recurring: isRecurring,
-                recurrence_weeks: isRecurring ? Number(recurrenceWeeks) : 1,
-                max_participants: Number(maxParticipants)
+
+            const baseDate = new Date(date);
+
+            let daysToUse = [];
+
+            if (mode === "single"){
+                daysToUse = [baseDate.getDay()];
+            } else {
+                if (selectedDays.length === 0){
+                    alert("Select at least one day.");
+                    return;
+                }
+                daysToUse = selectedDays //
+            }
+            const slotsPayload = daysToUse.map(day => {
+                const d = getNextWeekdayDate(baseDate, day)
+
+                const dateStr = d.toISOString().split("T")[0];
+
+                return{
+                    title: slotTitle,
+                    description: description || "",
+                    slot_type: slotType,
+                    start_time: `${dateStr}T${startTime}:00`,
+                    end_time: `${dateStr}T${endTime}:00`,
+                    is_recurring: isRecurring,
+                    recurrence_weeks: isRecurring ? Number(recurrenceWeeks) : 1,
+                    max_participants: Number(maxParticipants)
+                };
             });
 
-            console.log("New slot: ", newSlot);
-            setSlots(prev => [...prev, ...newSlot]);
+            const newSlots = await api.slots.createBulk({
+                slots: slotsPayload
+            });
+
+            // const newSlot = await api.slots.create({
+            //     title: slotTitle,
+            //     description: description || "",
+            //     slot_type: slotType,
+            //     start_time: `${date}T${startTime}:00`,
+            //     end_time: `${date}T${endTime}:00`,
+            //     is_recurring: isRecurring,
+            //     recurrence_weeks: isRecurring ? Number(recurrenceWeeks) : 1,
+            //     max_participants: Number(maxParticipants)
+            // });
+
+            console.log("New slot: ", newSlots);
+            setSlots(prev => [...prev, ...newSlots]);
 
             // Resets form
             setFormData({
                 slotTitle: "",
                 description: "",
+                slotType: "",
                 date: "",
                 startTime: "",
                 endTime: "",
                 isRecurring: false,
                 recurrenceWeeks: 1,
-                maxParticipants: 1
+                maxParticipants: 1,
+                mode: "single",
+                selectedDays: []
             });
 
         } catch (err) {
@@ -286,6 +330,20 @@ function Dashboard() {
         return `${dateLabel}, ${start.toLocaleTimeString("en-US", timeOptions)} - ${end.toLocaleTimeString("en-US", timeOptions)}`;
     }
 
+    function getNextWeekdayDate(baseDate, targetDay) {
+        const date = new Date(baseDate);
+        const currentDay = date.getDay();
+
+        let diff = targetDay - currentDay;
+
+        if (diff < 0) {
+            diff += 7; // push to NEXT week if before today
+        }
+
+        date.setDate(date.getDate() + diff);
+        return date;
+    }
+
     if (isLoading) {
         return (
             <div className="loading-screen">
@@ -424,13 +482,14 @@ function Dashboard() {
 
                                 <label>Slot Type:
                                     <select name="slotType" value={formData.slotType} onChange={handleInputChange} required>
+                                        <option value="" disabled>Select slot type</option>
                                         <option value="request">Request</option>
                                         <option value="group">Group</option>
                                         <option value="office_hours">Office Hours</option>
                                     </select>
                                 </label>
 
-                                <label>Date:
+                                <label>Start Date:
                                     <input 
                                         id="date" 
                                         type="date" 
@@ -440,6 +499,51 @@ function Dashboard() {
                                         required 
                                     />
                                 </label>
+
+                                {/* +++++ */}
+                                <label>Single Day / Multiple Days 
+                                    <select
+                                        name="mode"
+                                        value={formData.mode}
+                                        onChange={handleInputChange}
+                                    >
+                                        <option value="single">Single Day</option>
+                                        <option value="multiple">Multiple Days</option>
+                                    </select>
+                                </label>
+
+                                {formData.mode === "multiple" && (
+                                    <div className="weekday-section">
+                                        <label className="weekday-title">Select Days:</label>
+                                        <div className="weekday-grid">
+                                            {[
+                                                { label: "Sun", idx: 0},
+                                                { label: "Mon", idx: 1 },
+                                                { label: "Tue", idx: 2 },
+                                                { label: "Wed", idx: 3 },
+                                                { label: "Thu", idx: 4 },
+                                                { label: "Fri", idx: 5 },
+                                                { label: "Sat", idx: 6 }
+                                            ].map(day => (
+                                                <label key={day.idx} className="weekday-pill">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.selectedDays.includes(day.idx)}
+                                                        onChange={() => {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                selectedDays: prev.selectedDays.includes(day.idx)
+                                                                    ? prev.selectedDays.filter(d => d !== day.idx)
+                                                                    : [...prev.selectedDays, day.idx]
+                                                            }));
+                                                        }}
+                                                    />
+                                                    <span>{day.label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <label>Start Time:
                                     <input 

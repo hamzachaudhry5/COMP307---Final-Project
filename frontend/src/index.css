@@ -303,6 +303,49 @@ button {
   font-size: 1rem;
 }
 
+/* weekday select */
+.weekday-section {
+  margin-top: 10px;
+}
+
+.weekday-title {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.weekday-grid {
+  display: flex;
+  gap: 12px 14px;
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: center;
+}
+
+.weekday-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 14px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+
+  transition: 0.15s;
+}
+
+.weekday-pill:hover {
+  background: #f3f3f3;
+}
+
+.weekday-pill input {
+  cursor: pointer;
+}
+
 .visibility-toggle {
   display: inline-flex;
   align-items: center;
