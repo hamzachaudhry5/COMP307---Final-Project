@@ -21,7 +21,13 @@ function Dashboard() {
         maxParticipants: 1
     });
     const [appointments, setAppointments] = useState([])    
-    const [requests, pendingRequests] = useState([]);
+    const [pendingRequests, setPendingRequests] = useState([]);
+    const [requestData, setRequestData] = useState({
+        date: "",
+        startTime: "",
+        endTime: "",
+        message: ""
+    });
     const [weekOffset, setWeekOffset] = useState(0);
     const weekDays = getWeekDays(weekOffset);
     const weekLabel = getWeekRange(weekDays);
@@ -43,11 +49,11 @@ function Dashboard() {
 
             if (isOwner) {
                 try {
-                    const myRequests = await api.reservations.getIncoming();
-                    pendingRequests(myRequests);
+                    const myRequests = await api.meetingRequests.getIncoming();
+                    setPendingRequests(myRequests);
                 } catch (err) {
                     console.error("Failed to load incoming requests:", err);
-                    pendingRequests([]);
+                    setPendingRequests([]);
                 }
 
                 try {
@@ -162,11 +168,11 @@ function Dashboard() {
         const slot = slots.find(s => s.id === slotId);
         if (!slot) return;
 
-        const newIsPublic = slot.isPublic ? "private" : "active";
+        const newStatus = slot.isPublic ? "private" : "active";
 
         try {
             const updatedSlot = await api.slots.update(slotId, {
-                is_public: newIsPublic
+                status: newStatus
             });
 
             setSlots(prevSlots =>
@@ -175,21 +181,34 @@ function Dashboard() {
                         ? {
                             ...s,
                             ...updatedSlot,
-                            isPublic: (updatedSlot?.is_public ?? newIsPublic) === "active"
+                            isPublic: (updatedSlot?.status ?? newStatus) === "active"
                         }
                         : s
                 )
             );
         } catch (err) {
             console.error(err);
-            alert(err.message || "Failed to update visibility");
+            alert("Failed to update visibility");
         }
     }
 
     async function handleAcceptRequest(requestId) {
         try {
-            await api.meeting.accept(requestId);
+            await api.meetingRequests.accept(requestId);
             pendingRequests(prev => prev.filter(r => r.id !== requestId));
+
+            const myReservations = await api.reservations.getMy();
+            setAppointments(myReservations);
+
+            if (isOwner) {
+                const mySlots = await api.slots.getMine();
+                setSlots(
+                    mySlots.map(slot => ({
+                        ...slot,
+                        isPublic: slot.status === "active"
+                    }))
+                );
+            }
         } catch (err) {
             console.error(err);
             alert("Failed to accept request");
@@ -198,7 +217,7 @@ function Dashboard() {
 
     async function handleDeclineRequest(requestId) {
         try {
-            await api.meeting.decline(requestId);
+            await api.meetingRequests.decline(requestId);
             pendingRequests(prev => prev.filter(r => r.id !== requestId));
         } catch (err) {
             console.error(err);
@@ -284,6 +303,7 @@ function Dashboard() {
 
                 <nav>
                     <Link to="/">Home</Link>
+                    <Link to ="/booking">Booking</Link>
                     <button className="logout-button" onClick={handleLogout}>Logout</button>
                 </nav>
             </div>
@@ -357,23 +377,31 @@ function Dashboard() {
                         {/* PENDING REQUESTS */}
                         <section>
                             <h3 className="slots-section">Pending Requests</h3>
-                            {requests.length === 0 ? (
+                            {pendingRequests.length === 0 ? (
                                 <p>No pending requests.</p>
                             ) : (
-                                <div className="requests-list">
-                                    {requests.map(req => (
-                                        <div key={req.id} className="request-card">
-                                            <div>
-                                                <strong>{req.reserver.first_name} {req.reserver.last_name}</strong> wants to book <em>{req.slot.title}</em>
-                                            </div>
-                                            <div className="request-actions">
-                                                <button onClick={() => handleAcceptRequest(req.id)}>Accept</button>
-                                                <button onClick={() => handleDeclineRequest(req.id)}>Decline</button>
-                                                <button onClick={() => emailOwner(req.reserver.email)}>Email</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                        <div key={req.id} className="request-card">
+                            <div>
+                                <strong>
+                                    {req.requester?.first_name} {req.requester?.last_name}
+                                </strong>
+                                {" "}requested a meeting
+                                <br />
+                                <em>{formatSlotRange(req.start_time, req.end_time)}</em>
+
+                                {req.message && <p>{req.message}</p>}
+                            </div>
+
+                            <div className="request-actions">
+                                <button onClick={() => handleAcceptRequest(req.id)}>Accept</button>
+                                <button onClick={() => handleDeclineRequest(req.id)}>Decline</button>
+                                {req.requester?.email && (
+                                    <button onClick={() => emailOwner(req.requester.email)}>
+                                        Email
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                             )}
                         </section>
 
