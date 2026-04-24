@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/client";
@@ -27,6 +27,13 @@ function Booking() {
     const weekLabel = getWeekRange(weekDays);
     const [appointments, setAppointments] = useState([])   
     const calendarItems = appointments.map(reservation => reservation.slot);
+    const [inviteOwner, setInviteOwner] = useState(null);
+
+    const location = useLocation();
+    // const queryParams = new URLSearchParams(location.search);
+    // const ownerIdFromURL = queryParams.get("ownerId"); 
+    const { token } = useParams();
+
 
     useEffect(() => {
         if (isLoading || !user) return;
@@ -50,6 +57,42 @@ function Booking() {
 
         loadOwners();
     }, [isLoading, user]);
+
+    useEffect(() => {
+        if (!token) return;
+
+        if (isLoading) return;
+
+        if (!user) {
+            navigate("/login", {
+                state: {
+                    from: location.pathname
+                }
+            });
+            return;
+        }
+
+        async function loadInviteSlots(){
+            try {
+                setPageLoading(true);
+                setError("");
+
+                const ownerSlots = await api.slots.getByInvite(token);
+                setSlots(ownerSlots);
+
+                if (ownerSlots.length > 0 && ownerSlots[0].owner_id){
+                    setSelectedOwnerId(ownerSlots[0].owner_id);
+                }
+                // setSelectedOwnerId("");
+            } catch (err) {
+                console.error(err);
+                setError("Invalid or expired invite link");
+            } finally {
+                setPageLoading(false);
+            }
+        }
+        loadInviteSlots();
+    }, [token, user, isLoading, navigate, location.pathname]);
 
     async function handleOwnerChange(e) {
         const ownerId = e.target.value;
