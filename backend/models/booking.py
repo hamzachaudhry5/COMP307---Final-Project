@@ -49,7 +49,7 @@ class BookingSlot(BookingSlotBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     owner_id: int = Field(foreign_key="user.user_id")
-    status: SlotStatus = SlotStatus.PRIVATE
+    status: SlotStatus = SlotStatus.ACTIVE
     group_meeting_id: Optional[int] = Field(default=None, foreign_key="group_meetings.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("America/Toronto")))
 
@@ -224,11 +224,22 @@ class MeetingRequestCreate(MeetingRequestBase):
     pass
 
 
+class MeetingRequesterRead(SQLModel):
+    user_id: int
+    email: str
+    first_name: str
+    last_name: str
+
+    class Config:
+        from_attributes = True
+
+
 class MeetingRequestRead(MeetingRequestBase):
     id: int
     requester_id: int
     status: RequestStatus
     created_at: datetime
+    requester: Optional[MeetingRequesterRead] = None
 
     class Config:
         from_attributes = True

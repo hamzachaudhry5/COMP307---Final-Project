@@ -35,9 +35,11 @@ function Dashboard() {
 
     /* Private slots */
     const visibleOwnerSlots = isOwner
-        ? slots.filter(slot => slot.status === "active")
+        ? slots.filter(slot =>
+            slot.status === "active" || slot.status === "booked"
+        )
         : [];
-
+    
     const appointmentSlots = appointments
         .map(reservation => reservation.slot || reservation)
         .filter(Boolean);
@@ -181,6 +183,37 @@ function Dashboard() {
             alert("Failed to delete slot");
         }
     }
+
+    // Bulk deletion of all slots
+    async function deleteAllSlots() {
+        const confirmed = window.confirm("Delete ALL your slots? This cannot be undone.");
+        if (!confirmed) return;
+
+        try {
+            for (const slot of slots) {
+                const matchingReservation = appointments.find(r => 
+                    Number(r.slot?.id) === Number(slot.id) || 
+                    Number(r.slot_id) === Number(slot.id)
+                );
+                if (matchingReservation) {
+                    await api.reservations.cancel(matchingReservation.id);
+                }
+                await api.slots.delete(slot.id);
+            }
+            setSlots([]);
+            setAppointments(prev =>
+                prev.filter(r =>
+                    !slots.some(slot =>
+                        Number(r.slot?.id) === Number(slot.id) ||
+                        Number(r.slot_id) === Number(slot.id)
+                    )
+                )
+            );
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete all slots");
+        }
+    }
     
     async function cancelReservation(reservationId) {
         const confirmed = window.confirm("Cancel this reservation?");
@@ -231,7 +264,7 @@ function Dashboard() {
 
     async function handleAcceptRequest(requestId) {
         try {
-            await api.meetingRequests.accept(requestId);
+            const response = await api.meetingRequests.accept(requestId);
             setPendingRequests(prev => prev.filter(r => r.id !== requestId));
 
             const myReservations = await api.reservations.getMy();
@@ -240,6 +273,10 @@ function Dashboard() {
             if (isOwner) {
                 const mySlots = await api.slots.getMine();
                 setSlots(mySlots);
+            }
+
+            if (response?.mailto) {
+                openMailClient(response.mailto);
             }
         } catch (err) {
             console.error(err);
@@ -266,9 +303,25 @@ function Dashboard() {
         window.location.href = `mailto:${email}`;
     }
 
-    function openMailClient(email, subject, body) {
-        const mailtoURL = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        window.location.href = mailtoURL;
+    function openMailClient(response) {
+        if (typeof response === "string") {
+            window.location.href = response;
+            return;
+        }
+
+        if (response?.mailto || response?.url || response?.href) {
+            window.location.href = response.mailto || response.url || response.href;
+            return;
+        }
+
+        if (response?.to) {
+            const mailtoURL =
+                `mailto:${response.to}?subject=${encodeURIComponent(response.subject || "")}&body=${encodeURIComponent(response.body || "")}`;
+
+            window.location.href = mailtoURL;
+            return;
+        }
+        alert("No valid mailto or URL found in response");
     }
 
     function getWeekDays(offset = 0) {
@@ -427,7 +480,7 @@ function Dashboard() {
                                             {req.requester?.email && (
                                                 <span> ({req.requester.email})</span>
                                             )}
-                                            requested a meeting
+                                            <></>requested a meeting
                                             <br />
                                             <em>{formatSlotRange(req.start_time, req.end_time)}</em>
                                             <p>Message: </p>
@@ -561,7 +614,13 @@ function Dashboard() {
 
                         {/* SLOT LIST */}
                         <section className="slots-section">
-                            <h3 className="form-header">Your Slots</h3>
+                            <div className="slots-header">
+                                <h3 className="form-header">Your Slots</h3>
+
+                                <button className="delete-all-button" onClick={deleteAllSlots}>
+                                    Delete All Slots
+                                </button>
+                            </div>
                     
                             {slots.length === 0 ? (
                                 <p>You have no slots created yet.</p>
@@ -575,6 +634,9 @@ function Dashboard() {
                                             </div>
 
                                             <div className="slot-actions">
+                                                {slot.status==="booked" ? (
+                                                    <span className="booked-label">Booked</span>
+                                                ) : (
                                                     <label className="visibility-toggle">
                                                         <span>{slot.status === "active" ? "Public" : "Private"}</span>
                                                         <input
@@ -584,7 +646,7 @@ function Dashboard() {
                                                         />
                                                         <span className="toggle-slider" aria-hidden="true"></span>
                                                     </label>
-                                    
+                                                )}
                                                 <button className="invite-button" type="button" onClick={() => generateInviteURL(slot)}>
                                                     Invite
                                                 </button>
