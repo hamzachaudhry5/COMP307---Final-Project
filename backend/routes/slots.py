@@ -140,6 +140,22 @@ def activate_slot(
     session.refresh(slot)
     return slot
 
+# Owner: deactivate a slot 
+@router.patch("/{slot_id}/deactivate", response_model=BookingSlotRead)
+def deactivate_slot(
+    slot_id: int,
+    session: Session = Depends(get_session),
+    owner: User = Depends(get_owner),
+):
+    slot = _get_owned_slot(slot_id, owner, session)
+
+    if slot.status != SlotStatus.ACTIVE:
+        raise HTTPException(400, "Only ACTIVE slots can be deactivated")
+
+    slot.status = SlotStatus.PRIVATE
+    session.commit()
+    session.refresh(slot)
+    return slot
 
 # Owner: create/retrieve invitation link
 @router.post("/invite-link", response_model=InviteLinkResponse)
