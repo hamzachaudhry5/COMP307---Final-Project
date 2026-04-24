@@ -31,6 +31,8 @@ function Dashboard() {
         endTime: "",
         message: ""
     });
+    const [ownerReservations, setOwnerReservations] = useState([]);
+    
     const [weekOffset, setWeekOffset] = useState(0);
     const weekDays = getWeekDays(weekOffset);
     const weekLabel = getWeekRange(weekDays);
@@ -69,6 +71,14 @@ function Dashboard() {
                     );
                 } catch (err) {
                     console.error("Failed to load slots:", err);
+                }
+
+                try {
+                    const allReservations = await api.reservations.getOwnerAll();
+                    setOwnerReservations(allReservations);
+                } catch (err) {
+                    console.error("Failed to load owner reservations: ", err);
+                    setOwnerReservations([]);
                 }
             }
         }
@@ -359,6 +369,22 @@ function Dashboard() {
         );
     }
 
+    const reservationsBySlotId = ownerReservations.reduce((acc, r) => {
+        if(!acc[r.slot_id]) {
+            acc[r.slot_id] = [];
+        }
+        acc[r.slot_id].push(r);
+        return acc;
+    }, {});
+
+    const enrichedSlots = slots.map(slot => ({
+        ...slot,
+        reservations: reservationsBySlotId[slot.id] || [],
+        isBooked: (reservationsBySlotId[slot.id]?.length ?? 0) > 0
+    }));
+
+    
+
   return (
     <div>
         {/* Navbar */}
@@ -507,7 +533,6 @@ function Dashboard() {
                                     />
                                 </label>
 
-                                {/* +++++ */}
                                 <label>Single Day / Multiple Days 
                                     <select
                                         name="mode"
@@ -630,15 +655,31 @@ function Dashboard() {
                         <section className="slots-section">
                             <h3 className="form-header">Your Slots</h3>
                     
-                            {slots.length === 0 ? (
+                            {enrichedSlots.length === 0 ? (
                                 <p>You have no slots created yet.</p>
                             ) : (
                                 <div className="slots-list">
-                                    {slots.map((slot) => (
+                                    {enrichedSlots.map((slot) => (
                                         <div key={slot.id} className="slot-card">
                                             <div className="slot-details">
                                                 <h4>{slot.title}</h4>
                                                 <p>{formatSlotRange(slot.start_time, slot.end_time)}</p>
+                                            
+                                                {slot.isBooked ? (
+                                                    <div className="booking-status booked">
+                                                        <strong>Booked by: </strong>
+                                                        {slot.reservations.map(r => (
+                                                            <div key={r.user_id}>
+                                                                {r.first_name} {r.last_name}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="booking-status available">
+                                                        Available
+                                                    </div>
+                                                )}
+                                            
                                             </div>
 
                                             <div className="slot-actions">
