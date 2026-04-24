@@ -27,11 +27,6 @@ class RequestStatus(str, Enum):
     DECLINED = "declined"
 
 
-class ReservationStatus(str, Enum):
-    CONFIRMED = "confirmed"
-    CANCELLED = "cancelled"
-
-
 ### BookingSlot 
 class BookingSlotBase(SQLModel):
     title: str = Field(max_length=200)
@@ -95,7 +90,6 @@ class Reservation(ReservationBase, table=True):
     __tablename__ = "reservations"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    status: ReservationStatus = ReservationStatus.CONFIRMED
     reserved_at: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("America/Toronto")))
 
     slot: Optional[BookingSlot] = Relationship(back_populates="reservations")
@@ -106,7 +100,6 @@ class ReservationRead(SQLModel):
     id: int
     slot_id: int
     user_id: int
-    status: ReservationStatus
     reserved_at: datetime
     slot: Optional[BookingSlotRead] = None
 

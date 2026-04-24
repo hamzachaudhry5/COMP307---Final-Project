@@ -6,7 +6,6 @@ from models.booking import (
     MeetingRequest,
     Reservation,
     ReservationRead,
-    ReservationStatus,
     RequestStatus,
     SlotStatus
 )
@@ -30,7 +29,6 @@ def dashboard(
     my_reservations = session.exec(
         select(Reservation).where(
             Reservation.user_id == user.user_id,
-            Reservation.status == ReservationStatus.CONFIRMED,
         )
     ).all()
 
@@ -50,7 +48,6 @@ def dashboard(
             .join(Reservation, Reservation.slot_id == BookingSlot.id)
             .where(
                 BookingSlot.owner_id == user.user_id,
-                Reservation.status == ReservationStatus.CONFIRMED,
                 BookingSlot.status != SlotStatus.CANCELLED,
             )
             .distinct()
