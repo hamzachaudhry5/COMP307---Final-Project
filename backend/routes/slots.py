@@ -44,13 +44,6 @@ def create_slot(
     for week in range(recurring_weeks):
         delta = timedelta(weeks=week)
         start_time, end_time = booking_slot.start_time + delta, booking_slot.end_time + delta
-        check_slot_overlap(
-            owner_id=owner.user_id,
-            start_time=start_time,
-            end_time=end_time,
-            session=session
-        )
-
         data = booking_slot.model_dump()
         data["start_time"] = start_time
         data["end_time"] = end_time
@@ -89,13 +82,6 @@ def create_bulk_slots(
         for week in range(recurring_weeks):
             delta = timedelta(weeks=week)
             start_time, end_time = slot_data.start_time + delta, slot_data.end_time + delta
-            check_slot_overlap(
-                owner_id=owner.user_id,
-                start_time=start_time,
-                end_time=end_time,
-                session=session
-            )
-
             data = slot_data.model_dump()
             data["start_time"] = start_time
             data["end_time"] = end_time
@@ -119,7 +105,7 @@ def get_my_slots(
 ):
     """Owner sees all their slots (private + active + booked)."""
     return session.exec(
-        select(BookingSlot).where(BookingSlot.owner_id == owner.user_id)
+        select(BookingSlot).where(BookingSlot.owner_id == owner.user_id).order_by(BookingSlot.start_time)
     ).all()
 
 
@@ -134,6 +120,14 @@ def activate_slot(
 
     if slot.status != SlotStatus.PRIVATE:
         raise HTTPException(400, "Only PRIVATE slots can be activated")
+    
+    check_slot_overlap( 
+        owner_id=owner.user_id,
+        start_time=slot.start_time,
+        end_time=slot.end_time,
+        session=session,
+        current_slot_id=slot.id,
+    )
 
     slot.status = SlotStatus.ACTIVE
     session.commit()
@@ -192,14 +186,6 @@ def update_slot(
 
     if slot.end_time <= slot.start_time:
         raise HTTPException(400, "end_time must be after start_time")
-
-    check_slot_overlap(
-        owner_id=owner.user_id,
-        start_time=slot.start_time,
-        end_time=slot.end_time,
-        session=session,
-        current_slot_id=slot.id
-    )
 
     session.commit()
     session.refresh(slot)
