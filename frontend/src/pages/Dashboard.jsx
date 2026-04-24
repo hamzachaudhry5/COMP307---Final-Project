@@ -35,9 +35,14 @@ function Dashboard() {
 
     /* Private slots */
     const visibleOwnerSlots = isOwner
-    ? slots.filter(slot => slot.status === "active")
-    : [];
-    const calendarItems = [...appointments, ...visibleOwnerSlots];
+        ? slots.filter(slot => slot.status === "active")
+        : [];
+
+    const appointmentSlots = appointments
+        .map(reservation => reservation.slot || reservation)
+        .filter(Boolean);
+
+    const calendarItems = [...appointmentSlots, ...visibleOwnerSlots];
 
     useEffect(() => {
         if (isLoading || !user) return;
@@ -154,8 +159,22 @@ function Dashboard() {
         if (!confirmed) return;
 
         try {
+            const matchingReservation = appointments.find(r => 
+                Number(r.slot?.id) === Number(slotId) || 
+                Number(r.slot_id) === Number(slotId)
+            );
+            if (matchingReservation) {
+                await api.reservations.cancel(matchingReservation.id);
+            }
+
             await api.slots.delete(slotId);
             setSlots(prev => prev.filter(slot => slot.id !== slotId));
+                    setAppointments(prev =>
+            prev.filter(r =>
+                Number(r.slot?.id) !== Number(slotId) &&
+                Number(r.slot_id) !== Number(slotId)
+            )
+        );
 
         } catch (err) {
             console.error(err);
@@ -556,16 +575,16 @@ function Dashboard() {
                                             </div>
 
                                             <div className="slot-actions">
-                                                <label className="visibility-toggle">
-                                                    <span>{slot.status === "active" ? "Public" : "Private"}</span>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={slot.status === "active"}
-                                                        onChange={() => toggleVisibility(slot.id)}
-                                                    />
-                                                    <span className="toggle-slider" aria-hidden="true"></span>
-                                                </label>
-
+                                                    <label className="visibility-toggle">
+                                                        <span>{slot.status === "active" ? "Public" : "Private"}</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={slot.status === "active"}
+                                                            onChange={() => toggleVisibility(slot.id)}
+                                                        />
+                                                        <span className="toggle-slider" aria-hidden="true"></span>
+                                                    </label>
+                                    
                                                 <button className="invite-button" type="button" onClick={() => generateInviteURL(slot)}>
                                                     Invite
                                                 </button>
