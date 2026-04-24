@@ -7,7 +7,6 @@ from models.booking import (
     MailtoResponse,
     Reservation,
     ReservationRead,
-    ReservationStatus,
     SlotStatus,
     build_mailto,
 )
@@ -38,7 +37,6 @@ def reserve_slot(
     current_reservations_count = session.exec(
         select(func.count(Reservation.id)).where(
             Reservation.slot_id == slot_id,
-            Reservation.status == ReservationStatus.CONFIRMED,
         )
     ).one()
 
@@ -50,7 +48,6 @@ def reserve_slot(
         select(Reservation).where(
             Reservation.slot_id == slot_id,
             Reservation.user_id == user.user_id,
-            Reservation.status == ReservationStatus.CONFIRMED
         )
     ).first()
     if duplicate_check:
@@ -94,15 +91,11 @@ def cancel_reservation(
     reservation = session.get(Reservation, reservation_id)
     if not reservation or reservation.user_id != user.user_id:
         raise HTTPException(404, "Reservation not found")
-    
-    if reservation.status == ReservationStatus.CANCELLED:
-        raise HTTPException(400, "Reservation is already cancelled")
 
     slot = session.get(BookingSlot, reservation.slot_id)
-    remaining_confirmed = session.exec(
+    remaining = session.exec(
         select(func.count(Reservation.id)).where(
             Reservation.slot_id == slot.id,
-            Reservation.status == ReservationStatus.CONFIRMED,
             Reservation.id != reservation.id,
         )
     ).one()
@@ -111,8 +104,9 @@ def cancel_reservation(
         if slot.max_participants is None:
             slot.status = SlotStatus.ACTIVE
         else:
-            slot.status = SlotStatus.BOOKED if remaining_confirmed >= slot.max_participants else SlotStatus.ACTIVE
-    reservation.status = ReservationStatus.CANCELLED
+            slot.status = SlotStatus.BOOKED if remaining >= slot.max_participants else SlotStatus.ACTIVE
+    
+    session.delete(reservation)
     session.commit()
 
     owner = session.get(User, slot.owner_id)
@@ -138,7 +132,6 @@ def my_reservations(
     return session.exec(
         select(Reservation).where(
             Reservation.user_id == user.user_id,
-            Reservation.status == ReservationStatus.CONFIRMED,
         )
     ).all()
 
@@ -163,6 +156,5 @@ def owner_reservations(
     return session.exec(
         select(Reservation).where(
             Reservation.slot_id.in_(owned_slot_ids),
-            Reservation.status == ReservationStatus.CONFIRMED,
         )
     ).all()

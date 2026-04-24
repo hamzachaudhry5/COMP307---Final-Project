@@ -8,7 +8,6 @@ from icalendar import Calendar, Event
 from models.booking import (
     BookingSlot,
     Reservation,
-    ReservationStatus,
     SlotStatus,
 )
 from models.users import User, UserRole
@@ -41,7 +40,6 @@ def export_ical(
     reservations = session.exec(
         select(Reservation).where(
             Reservation.user_id == user.user_id,
-            Reservation.status == ReservationStatus.CONFIRMED,
         )
     ).all()
 
@@ -53,7 +51,7 @@ def export_ical(
     # Owner's own slots
     if user.role == UserRole.owner:
         owned_confirmed_ids = session.exec(
-            select(Reservation.slot_id).where(Reservation.status == ReservationStatus.CONFIRMED).distinct()
+            select(Reservation.slot_id).distinct()
         ).all()
         owned_slots = session.exec(
             select(BookingSlot).where(
