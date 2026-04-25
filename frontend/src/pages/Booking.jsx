@@ -6,6 +6,7 @@ import api from "../api/client";
 function Booking() {
     const navigate = useNavigate();
     const { user, logout, isLoading } = useAuth();
+    const location = useLocation();
 
     const [owners, setOwners] = useState([]);
     const [selectedOwnerId, setSelectedOwnerId] = useState("");
@@ -30,10 +31,15 @@ function Booking() {
     const calendarItems = appointments.map(reservation => reservation.slot);
     const [inviteOwner, setInviteOwner] = useState(null);
 
-    const location = useLocation();
     // const queryParams = new URLSearchParams(location.search);
     // const ownerIdFromURL = queryParams.get("ownerId"); 
     const { token } = useParams();
+
+    useEffect(() => {
+        if (!isLoading && !user) {
+            navigate("/login");
+        }
+    }, [user, isLoading, navigate]);
 
 
     useEffect(() => {
@@ -175,8 +181,8 @@ function Booking() {
         }
     }
 
-    function handleLogout() {
-        logout();
+    async function handleLogout() {
+        await logout();
         navigate("/login");
     }
 
