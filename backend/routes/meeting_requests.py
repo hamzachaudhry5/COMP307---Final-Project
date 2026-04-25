@@ -104,7 +104,7 @@ def accept_request(
     # Create a BOOKED slot for the agreed time
     slot = BookingSlot(
         owner_id=owner.user_id,
-        slot_type=SlotType.REQUEST,
+        slot_type=SlotType.GENERAL_SLOT,
         status=SlotStatus.BOOKED,
         title=f"Meeting with {session.get(User, req.requester_id).first_name}",
         start_time=req.start_time,
