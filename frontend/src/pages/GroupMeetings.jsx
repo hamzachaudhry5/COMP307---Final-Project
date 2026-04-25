@@ -13,6 +13,9 @@ function GroupMeetings({ isOwner, userId }) {
         invited_user_ids: []
     });
 
+    const [userSearch, setUserSearch] = useState("");
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
+
     const [heatmap, setHeatmap] = useState(null);
     const [selectedMeetingId, setSelectedMeetingId] = useState(null);
 
@@ -83,6 +86,7 @@ function GroupMeetings({ isOwner, userId }) {
                 options: [{ start_time: "", end_time: "", date: "" }],
                 invited_user_ids: []
             });
+            setUserSearch("");
             loadData();
         } catch (err) {
             alert(err.message);
@@ -135,6 +139,13 @@ function GroupMeetings({ isOwner, userId }) {
         return `rgba(0, 123, 255, ${opacity})`;
     };
 
+    const filteredUsers = allUsers.filter(u => 
+        (u.first_name + " " + u.last_name + " " + u.email).toLowerCase().includes(userSearch.toLowerCase()) &&
+        !newMeeting.invited_user_ids.includes(u.user_id)
+    );
+
+    const invitedUsers = allUsers.filter(u => newMeeting.invited_user_ids.includes(u.user_id));
+
     return (
         <div className="group-meetings-container">
             {isOwner && (
@@ -160,16 +171,61 @@ function GroupMeetings({ isOwner, userId }) {
                             <button type="button" onClick={handleAddOption} className="secondary-button" style={{ marginBottom: '15px' }}>Add Option</button>
                         </div>
 
-                        <div className="invite-section" style={{ marginTop: '15px' }}>
+                        <div className="invite-section" style={{ marginTop: '15px', position: 'relative' }}>
                             <h4 style={{ marginBottom: '10px' }}>Invite Users</h4>
-                            <div className="user-grid">
-                                {allUsers.map(u => (
-                                    <label key={u.user_id} className="user-pill">
-                                        <input type="checkbox" checked={newMeeting.invited_user_ids.includes(u.user_id)} onChange={() => handleInviteToggle(u.user_id)} />
-                                        {u.first_name} {u.last_name} ({u.email})
-                                    </label>
-                                ))}
-                                {allUsers.length === 0 && <p style={{ fontSize: '0.9rem', color: '#666' }}>No other users registered yet.</p>}
+                            
+                            <div className="search-container">
+                                <input 
+                                    type="text" 
+                                    placeholder="Search users by name or email..." 
+                                    value={userSearch}
+                                    onChange={(e) => {
+                                        setUserSearch(e.target.value);
+                                        setShowUserDropdown(true);
+                                    }}
+                                    onFocus={() => setShowUserDropdown(true)}
+                                />
+                                
+                                {showUserDropdown && userSearch && (
+                                    <div className="user-search-results">
+                                        {filteredUsers.length > 0 ? (
+                                            filteredUsers.map(u => (
+                                                <div 
+                                                    key={u.user_id} 
+                                                    className="search-result-item"
+                                                    onClick={() => {
+                                                        handleInviteToggle(u.user_id);
+                                                        setUserSearch("");
+                                                        setShowUserDropdown(false);
+                                                    }}
+                                                >
+                                                    {u.first_name} {u.last_name} ({u.email})
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="search-result-item no-results">No matches found</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="invited-users-list" style={{ marginTop: '15px' }}>
+                                <p style={{ fontSize: '0.9rem', fontWeight: '600', marginBottom: '8px' }}>Invited ({invitedUsers.length}):</p>
+                                <div className="user-grid">
+                                    {invitedUsers.map(u => (
+                                        <div key={u.user_id} className="user-pill invited">
+                                            <span>{u.first_name} {u.last_name}</span>
+                                            <button 
+                                                type="button" 
+                                                className="remove-user-btn"
+                                                onClick={() => handleInviteToggle(u.user_id)}
+                                            >
+                                                &times;
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {invitedUsers.length === 0 && <p style={{ fontSize: '0.85rem', color: '#666' }}>No users invited yet.</p>}
+                                </div>
                             </div>
                         </div>
                         <button type="submit" className="submit-button" style={{ marginTop: '20px' }}>Create Group Meeting</button>
