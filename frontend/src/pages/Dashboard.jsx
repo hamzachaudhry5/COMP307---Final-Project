@@ -46,6 +46,15 @@ function Dashboard() {
         }
     }, [user, isLoading, navigate]);
 
+    function getOwnerName(ownerId){
+        if (Number(ownerId) === Number(user?.user_id)) {
+            return `${user.first_name} ${user.last_name}`; // or "You"
+        }
+
+        const owner = owners.find(o => Number(o.user_id) === Number(ownerId));
+        return owner ? `${owner.first_name} ${owner.last_name}` : "Unknown";
+    }
+
     /* Private slots */
     const visibleOwnerSlots = isOwner
         ? slots.filter(slot =>
@@ -146,19 +155,29 @@ function Dashboard() {
         }
 
         try {
-            const baseDate = new Date(date);
+            let baseDate;
+
+            // const [y, m, d] = date.split("-").map(Number);
+            // const baseDate = new Date(y, m - 1, d);
+            // baseDate.setHours(0, 0, 0, 0);
             let daysToUse = [];
 
             if (mode === "single"){
+                baseDate = new Date(date);
                 daysToUse = [baseDate.getDay()];
             } else {
                 if (selectedDays.length === 0){
                     alert("Select at least one day.");
                     return;
                 }
+                const [y, m, d] = date.split("-").map(Number);
+                baseDate = new Date(y, m - 1, d);
+                baseDate.setHours(0, 0, 0, 0);
+                
                 daysToUse = selectedDays;
             }
             const slotsPayload = daysToUse.map(day => {
+
                 const d = getNextWeekdayDate(baseDate, day);
                 const dateStr = d.toISOString().split("T")[0];
                 return{
@@ -407,13 +426,43 @@ function Dashboard() {
     }
 
     function getNextWeekdayDate(baseDate, targetDay) {
+        console.log("----- getNextWeekdayDate -----");
+        console.log("baseDate (raw):", baseDate);
+        console.log("baseDate (getDay):", new Date(baseDate).getDay());
+        console.log("targetDay:", targetDay);
+
         const date = new Date(baseDate);
         const currentDay = date.getDay();
         let diff = targetDay - currentDay;
+
+        console.log("initial diff:", diff);
+
         if (diff < 0) diff += 7;
+        
+        console.log("wrapped diff:", diff);
+
         date.setDate(date.getDate() + diff);
+
+
+        console.log("final computed date:", date);
+        console.log("final ISO:", date.toISOString());
+        console.log("-----------------------------");
         return date;
     }
+    // function getWeekAnchorDate(baseDate) {
+    //     const date = new Date(baseDate);
+    //     const day = date.getDay();
+    //     date.setDate(date.getDate() - day); // move to Sunday of that week
+    //     date.setHours(0, 0, 0, 0);
+    //     return date;
+    // }
+
+    // function getDateFromWeek(baseDate, weekdayIndex) {
+    //     const weekStart = getWeekAnchorDate(baseDate);
+    //     const date = new Date(weekStart);
+    //     date.setDate(weekStart.getDate() + weekdayIndex);
+    //     return date;
+    // }
 
     if (isLoading) {
         return <div className="loading-screen"><h2>Loading...</h2></div>;
@@ -459,16 +508,22 @@ function Dashboard() {
                                     <div className="week-day-number">{day.getDate()}</div>
                                 </div>
                                 <div className="week-day-slots">
-                                    {calendarItems.filter(item => isSameDay(item.start_time, day)).map(item => (
-                                        <div key={item.id} className="calendar-slot">
-                                            <div className="slot-time">
-                                                {new Date(item.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                {" - "}
-                                                {new Date(item.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {calendarItems.filter(item => isSameDay(item.start_time, day)).map(item => {
+                                        const ownerName = getOwnerName(item.owner_id);
+
+                                        return(
+                                            <div key={item.id} className="calendar-slot">
+                                                <div className="slot-time">
+                                                    {new Date(item.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    {" - "}
+                                                    {new Date(item.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </div>
+                                                <div className="slot-title">{item.title}</div>
+                                                <div className="slot-owner"><strong>Owner:</strong><br></br>{ownerName}</div>
                                             </div>
-                                            <div className="slot-title">{item.title}</div>
-                                        </div>
-                                    ))}
+                                        );
+
+                                    })}
                                     {calendarItems.filter(item => isSameDay(item.start_time, day)).length === 0 && (
                                         <div className="week-day-empty">No Events</div>
                                     )}
