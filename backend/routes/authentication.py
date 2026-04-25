@@ -155,3 +155,14 @@ def logout(refresh_token: str = Body(..., embed=True), db: Session = Depends(get
         db.commit()
     
     return {"message": "Successfully logged out"}
+
+
+@router.get("/users", response_model=list[UserRead])
+def list_all_users(
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Returns all registered users except the current user."""
+    return db.exec(
+        select(User).where(User.user_id != current_user.user_id)
+    ).all()

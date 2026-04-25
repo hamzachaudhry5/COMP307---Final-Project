@@ -75,6 +75,34 @@ def create_group_meeting(
     return meeting
 
 
+# Owner: list their group meetings
+@router.get("/mine", response_model=list[GroupMeetingRead])
+def get_my_group_meetings(
+    session: Session = Depends(get_session),
+    owner: User = Depends(get_owner),
+):
+    return session.exec(
+        select(GroupMeeting).where(GroupMeeting.owner_id == owner.user_id)
+    ).all()
+
+
+# User: list group meeting invitations
+@router.get("/invites", response_model=list[GroupMeetingRead])
+def get_my_invites(
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    meeting_ids = session.exec(
+        select(GroupMeetingInvite.meeting_id).where(GroupMeetingInvite.user_id == user.user_id)
+    ).all()
+    if not meeting_ids:
+        return []
+    
+    return session.exec(
+        select(GroupMeeting).where(GroupMeeting.id.in_(meeting_ids))
+    ).all()
+
+
 # Owner: view a group meeting 
 @router.get("/{meeting_id}", response_model=GroupMeetingRead)
 def get_group_meeting(

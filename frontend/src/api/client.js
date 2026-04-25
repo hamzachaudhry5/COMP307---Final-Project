@@ -33,6 +33,7 @@ export const auth = {
     return res.json();
   },
   me: () => fetchAuth("/auth/me"),
+  getUsers: () => fetchAuth("/auth/users"),
   refresh: (token) => fetchPub("/auth/refresh", { method: "POST", body: JSON.stringify({ refresh_token: token }) }),
   logout: (token) => fetchPub("/auth/logout", { method: "POST", body: JSON.stringify({ refresh_token: token }) }).catch(() => {}),
 };
@@ -72,6 +73,8 @@ export const reservations = {
 
 export const groupMeetings = {
   create: (data) => fetchAuth("/group-meetings", { method: "POST", body: JSON.stringify(data) }),
+  getMine: () => fetchAuth("/group-meetings/mine"),
+  getInvites: () => fetchAuth("/group-meetings/invites"),
   get: (id) => fetchAuth(`/group-meetings/${id}`),
   vote: (id, data) => fetchAuth(`/group-meetings/${id}/vote`, { method: "POST", body: JSON.stringify(data) }),
   getHeatmap: (id) => fetchAuth(`/group-meetings/${id}/heatmap`),
