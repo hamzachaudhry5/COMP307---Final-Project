@@ -7,7 +7,7 @@ import GroupMeetings from "./GroupMeetings";
 function Dashboard() {
     const navigate = useNavigate();
     const { user, logout, isLoading } = useAuth();
-    const isOwner = user?.role === "owner"; 
+    const isOwner = user?.role === "owner";
 
     const [slots, setSlots] = useState([]);
     const [formData, setFormData] = useState({
@@ -24,8 +24,8 @@ function Dashboard() {
         selectedDays: []
     });
 
-    const [appointments, setAppointments] = useState([])    
-    const [ownerReservations, setOwnerReservations] = useState([]); 
+    const [appointments, setAppointments] = useState([]);
+    const [ownerReservations, setOwnerReservations] = useState([]);
     const [pendingRequests, setPendingRequests] = useState([]);
     const [sentRequests, setSentRequests] = useState([]);
     const [owners, setOwners] = useState([]);
@@ -38,8 +38,7 @@ function Dashboard() {
     const [weekOffset, setWeekOffset] = useState(0);
     const weekDays = getWeekDays(weekOffset);
     const weekLabel = getWeekRange(weekDays);
-
-    // Track which slots have their booker dropdown open
+    const [expandedBatches, setExpandedBatches] = useState(new Set());
     const [expandedSlots, setExpandedSlots] = useState(new Set());
 
     useEffect(() => {
@@ -49,16 +48,24 @@ function Dashboard() {
     }, [user, isLoading, navigate]);
 
     const visibleOwnerSlots = isOwner
-        ? slots.filter(slot =>
-            slot.status === "active" || slot.status === "booked"
-        )
+        ? slots.filter(slot => slot.status === "active" || slot.status === "booked")
         : [];
-    
+
     const appointmentSlots = appointments
         .map(reservation => reservation.slot || reservation)
         .filter(Boolean);
 
     const calendarItems = [...appointmentSlots, ...visibleOwnerSlots];
+
+    // Group slots by batch_id for the slots section
+    const groupedSlots = [...slots]
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+        .reduce((groups, slot) => {
+            const key = slot.batch_id || `solo-${slot.id}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(slot);
+            return groups;
+        }, {});
 
     useEffect(() => {
         if (isLoading || !user) return;
@@ -109,7 +116,7 @@ function Dashboard() {
                 }
             }
         }
-        
+
         loadData();
     }, [isLoading, user, isOwner]);
 
@@ -136,19 +143,20 @@ function Dashboard() {
         try {
             const baseDate = new Date(date);
             let daysToUse = [];
-            if (mode === "single"){
+            if (mode === "single") {
                 daysToUse = [baseDate.getDay()];
             } else {
-                if (selectedDays.length === 0){
+                if (selectedDays.length === 0) {
                     alert("Select at least one day.");
                     return;
                 }
                 daysToUse = selectedDays;
             }
+
             const slotsPayload = daysToUse.map(day => {
                 const d = getNextWeekdayDate(baseDate, day);
                 const dateStr = d.toISOString().split("T")[0];
-                return{
+                return {
                     title: slotTitle,
                     description: description || "",
                     slot_type: slotType,
@@ -161,10 +169,15 @@ function Dashboard() {
             });
             const newSlots = await api.slots.createBulk({ slots: slotsPayload });
             setSlots(prev => [...prev, ...newSlots]);
-            setFormData({ slotTitle: "", description: "", slotType: "general slot", date: "", startTime: "", endTime: "", isRecurring: false, recurrenceWeeks: 1, maxParticipants: 1, mode: "single", selectedDays: [] });
+
+            setFormData({
+                slotTitle: "", description: "", slotType: "general slot", date: "",
+                startTime: "", endTime: "", isRecurring: false,
+                recurrenceWeeks: 1, maxParticipants: 1, mode: "single", selectedDays: []
+            });
         } catch (err) {
-            console.error(err);
-            alert("Failed to create slot");
+            console.error("Full error:", err.message);  // now prints the actual Pydantic detail
+            alert("Failed to create slot: " + err.message);
         }
     }
 
@@ -178,7 +191,7 @@ function Dashboard() {
             setAppointments(prev => prev.filter(r => Number(r.slot?.id) !== Number(slotId) && Number(r.slot_id) !== Number(slotId)));
             if (response?.mailto) openMailClient(response.mailto);
             if (slotToDelete?.slot_type === "group meeting" || slotToDelete?.group_meeting_id) {
-                window.location.reload(); 
+                window.location.reload();
             }
         } catch (err) {
             console.error(err);
@@ -200,7 +213,20 @@ function Dashboard() {
             alert("Failed to delete all slots");
         }
     }
-    
+
+    async function deleteBatch(batchId) {
+        const confirmed = window.confirm("Delete all slots in this batch?");
+        if (!confirmed) return;
+        try {
+            const response = await api.slots.deleteBatch(batchId);
+            setSlots(prev => prev.filter(s => s.batch_id !== batchId));
+            if (response?.mailto) openMailClient(response.mailto);
+        } catch (err) {
+            console.error(err);
+            alert(err.message || "Failed to delete batch");
+        }
+    }
+
     async function cancelReservation(reservationId) {
         const confirmed = window.confirm("Cancel this reservation?");
         if (!confirmed) return;
@@ -213,9 +239,9 @@ function Dashboard() {
             alert("Failed to cancel reservation");
         }
     }
-    
-    async function generateInviteURL(slot) {
-         try {
+
+    async function generateInviteURL() {
+        try {
             const res = await api.slots.createInviteLink();
             let inviteURL = res.invite_url;
             if (inviteURL.startsWith("/")) inviteURL = `http://localhost:3000${inviteURL}`;
@@ -233,13 +259,40 @@ function Dashboard() {
         const targetStatus = slot.status === "active" ? "private" : "active";
         setSlots(prev => prev.map(s => Number(s.id) === Number(slotId) ? { ...s, status: targetStatus } : s));
         try {
-            const updatedSlot = targetStatus === "private" ? await api.slots.deactivate(slotId) : await api.slots.activate(slotId);
-            setSlots(prevSlots => prevSlots.map(s => Number(s.id) === Number(slotId) ? updatedSlot : s));
+            const updatedSlot = targetStatus === "private"
+                ? await api.slots.deactivate(slotId)
+                : await api.slots.activate(slotId);
+            setSlots(prevSlots =>
+                prevSlots.map(s => Number(s.id) === Number(slotId) ? updatedSlot : s)
+            );
         } catch (err) {
             console.error(err);
             setSlots(prev => prev.map(s => Number(s.id) === Number(slotId) ? slot : s));
-            alert("Failed to update visibility");
+            alert(err.message || "Failed to update visibility");
         }
+    }
+
+    async function toggleBatchVisibility(batchId, currentStatus) {
+        try {
+            const updatedSlots = currentStatus === "active"
+                ? await api.slots.deactivateBatch(batchId)
+                : await api.slots.activateBatch(batchId);
+            setSlots(prev => prev.map(s => {
+                const updated = updatedSlots.find(u => u.id === s.id);
+                return updated || s;
+            }));
+        } catch (err) {
+            console.error(err);
+            alert(err.message || "Failed to update batch visibility");
+        }
+    }
+
+    function toggleBatchExpand(batchId) {
+        setExpandedBatches(prev => {
+            const next = new Set(prev);
+            next.has(batchId) ? next.delete(batchId) : next.add(batchId);
+            return next;
+        });
     }
 
     async function handleAcceptRequest(requestId) {
@@ -269,7 +322,7 @@ function Dashboard() {
         }
     }
 
-    async function handleLogout(){
+    async function handleLogout() {
         await logout();
         navigate("/login");
     }
@@ -299,6 +352,12 @@ function Dashboard() {
         });
     }
 
+    // Opens a mailto: link to email a user directly from the dashboard
+    function emailOwner(email) {
+        if (!email) return;
+        window.location.href = `mailto:${email}`;
+    }
+
     function openMailClient(response) {
         if (typeof response === "string") { window.location.href = response; return; }
         if (response?.mailto || response?.url || response?.href) { window.location.href = response.mailto || response.url || response.href; return; }
@@ -314,12 +373,13 @@ function Dashboard() {
         const today = new Date();
         const sunday = new Date(today);
         sunday.setDate(today.getDate() - today.getDay() + offset * 7);
-        return Array.from({ length: 7 }, (_, i) =>{
+        return Array.from({ length: 7 }, (_, i) => {
             const d = new Date(sunday);
             d.setDate(sunday.getDate() + i);
             return d;
         });
     }
+
     function getWeekRange(weekDays) {
         const start = weekDays[0];
         const end = weekDays[6];
@@ -349,232 +409,370 @@ function Dashboard() {
         return date;
     }
 
+    // Derive a human-readable summary for a batch header
+    // e.g. "Mon & Tue · 1:00 – 2:00 PM · 4 weeks" or "Mon · 1:00 – 2:00 PM · weekly"
+    function getBatchSummary(batchSlots) {
+        const start = new Date(batchSlots[0].start_time);
+        const end = new Date(batchSlots[0].end_time);
+        const timeOptions = { hour: "numeric", minute: "2-digit" };
+        const timeRange = `${start.toLocaleTimeString("en-US", timeOptions)} – ${end.toLocaleTimeString("en-US", timeOptions)}`;
+
+        // Unique weekdays represented in this batch
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const uniqueDays = [...new Set(batchSlots.map(s => new Date(s.start_time).getDay()))];
+        const daysLabel = uniqueDays.map(d => dayNames[d]).join(" & ");
+
+        // Date span
+        const firstDate = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const lastDate = new Date(batchSlots[batchSlots.length - 1].start_time)
+            .toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const spanLabel = firstDate === lastDate ? firstDate : `${firstDate} - ${lastDate}`;
+
+        return { daysLabel, timeRange, spanLabel };
+    }
+
     if (isLoading) {
         return <div className="loading-screen"><h2>Loading...</h2></div>;
     }
 
-  return (
-    <div>
-        <header className="navbar">
-            <div className="container nav-content">
-                <h1 className="title">BookSOCS</h1>
-                <nav>
-                    <Link to="/">Home</Link>
-                    <Link to ="/booking">Booking</Link>
-                    <button className="logout-button" onClick={handleLogout}>Logout</button>
-                </nav>
-            </div>
-        </header>
+    return (
+        <div>
+            <header className="navbar">
+                <div className="container nav-content">
+                    <h1 className="title">BookSOCS</h1>
+                    <nav>
+                        <Link to="/">Home</Link>
+                        <Link to="/booking">Booking</Link>
+                        <button className="logout-button" onClick={handleLogout}>Logout</button>
+                    </nav>
+                </div>
+            </header>
 
-        <main className="dashboard-page">
-            <div className="container">
-                <h2 className="dash-header">Welcome, {user?.first_name}</h2>
+            <main className="dashboard-page">
+                <div className="container">
+                    <h2 className="dash-header">Welcome, {user?.first_name}</h2>
 
-                <GroupMeetings isOwner={isOwner} userId={user?.user_id} />
+                    <GroupMeetings isOwner={isOwner} userId={user?.user_id} />
 
-                <section className="dashboard-section">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                        <h3 className="form-header" style={{ marginBottom: 0 }}>Your Bookings:</h3>
-                        <button className="secondary-button" onClick={handleExportCalendar}>
-                            Export Calendar (.ics)
-                        </button>
-                    </div>
+                    {/* Calendar section */}
+                    <section className="dashboard-section">
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
+                            <h3 className="form-header" style={{ marginBottom: 0 }}>Your Bookings:</h3>
+                            <button className="secondary-button" onClick={handleExportCalendar}>
+                                Export Calendar (.ics)
+                            </button>
+                        </div>
 
-                    <div className="week-nav">
-                        <button onClick={() => setWeekOffset(prev => prev -1)}>&lt;</button>
-                        <h3 className="week-title">{weekLabel}</h3>
-                        <button onClick={() => setWeekOffset(prev => prev +1)}>&gt;</button>
-                    </div>
-                    <div className="week-grid">
-                        {weekDays.map((day, i) => (
-                            <div key={i} className="week-day">
-                                <div className="week-day-header">
-                                    <div className="week-day-initial">{day.toLocaleDateString("en-US", {weekday: "short"})[0]}</div>
-                                    <div className="week-day-number">{day.getDate()}</div>
-                                </div>
-                                <div className="week-day-slots">
-                                    {calendarItems.filter(item => isSameDay(item.start_time, day)).map(item => (
-                                        <div key={item.id} className="calendar-slot">
-                                            <div className="slot-time">
-                                                {new Date(item.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                {" - "}
-                                                {new Date(item.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <div className="week-nav">
+                            <button onClick={() => setWeekOffset(prev => prev - 1)}>&lt;</button>
+                            <h3 className="week-title">{weekLabel}</h3>
+                            <button onClick={() => setWeekOffset(prev => prev + 1)}>&gt;</button>
+                        </div>
+                        <div className="week-grid">
+                            {weekDays.map((day, i) => (
+                                <div key={i} className="week-day">
+                                    <div className="week-day-header">
+                                        <div className="week-day-initial">{day.toLocaleDateString("en-US", { weekday: "short" })[0]}</div>
+                                        <div className="week-day-number">{day.getDate()}</div>
+                                    </div>
+                                    <div className="week-day-slots">
+                                        {calendarItems.filter(item => isSameDay(item.start_time, day)).map(item => (
+                                            <div key={item.id} className="calendar-slot">
+                                                <div className="slot-time">
+                                                    {new Date(item.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                    {" - "}
+                                                    {new Date(item.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                </div>
+                                                <div className="slot-title">{item.title}</div>
                                             </div>
-                                            <div className="slot-title">{item.title}</div>
-                                        </div>
-                                    ))}
-                                    {calendarItems.filter(item => isSameDay(item.start_time, day)).length === 0 && (
-                                        <div className="week-day-empty">No Events</div>
-                                    )}
+                                        ))}
+                                        {calendarItems.filter(item => isSameDay(item.start_time, day)).length === 0 && (
+                                            <div className="week-day-empty">No Events</div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                    <button className="submit-button" onClick={() => navigate("/booking")}>Book Appointment</button>
-                </section>
+                            ))}
+                        </div>
+                        <button className="submit-button" onClick={() => navigate("/booking")}>Book Appointment</button>
+                    </section>
 
-                {isOwner && (
-                    <>  
-                        <section className="slots-section">
-                            <h3 className="form-header">Pending Requests</h3>
-                            {pendingRequests.length === 0 ? <p>No pending requests.</p> : (
-                            <div className="slots-list">
-                                {pendingRequests.map(req => (
-                                    <div key={req.id} className="request-card">
-                                        <div>
-                                            <strong>{req.requester?.first_name} {req.requester?.last_name}</strong>
-                                            {req.requester?.email && <span> ({req.requester.email})</span>}
-                                            <p>requested a meeting</p>
-                                            <em>{formatSlotRange(req.start_time, req.end_time)}</em>
-                                            <p>Message: {req.message}</p>
-                                        </div>
-                                        <div className="request-actions">
-                                            <button onClick={() => handleAcceptRequest(req.id)}>Accept</button>
-                                            <button onClick={() => handleDeclineRequest(req.id)}>Decline</button>
-                                            {req.requester?.email && <button onClick={() => openMailClient({to: req.requester.email})}>Email</button>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            )}
-                        </section>
-
-                        <section className="dashboard-section">
-                            <h3 className="form-header">Create a slot</h3>
-                            <form className="slot-form" onSubmit={createSlot}>
-                                <label>Slot Title:
-                                    <input type="text" name="slotTitle" value={formData.slotTitle} onChange={handleInputChange} required />
-                                </label>
-                                <label>Slot Type:
-                                    <select name="slotType" value={formData.slotType} onChange={handleInputChange} required>
-                                        <option value="" disabled>Select slot type</option>
-                                        <option value="general slot">General Slot</option>
-                                        <option value="group meeting">Group Meeting</option>
-                                        <option value="office hours">Office Hours</option>
-                                    </select>
-                                </label>
-                                <label>Start Date:
-                                    <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
-                                </label>
-                                <label>Single Day / Multiple Days 
-                                    <select name="mode" value={formData.mode} onChange={handleInputChange}>
-                                        <option value="single">Single Day</option>
-                                        <option value="multiple">Multiple Days</option>
-                                    </select>
-                                </label>
-                                {formData.mode === "multiple" && (
-                                    <div className="weekday-section">
-                                        <label className="weekday-title">Select Days:</label>
-                                        <div className="weekday-grid">
-                                            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label, idx) => (
-                                                <label key={idx} className="weekday-pill">
-                                                    <input type="checkbox" checked={formData.selectedDays.includes(idx)} onChange={() => {
-                                                        setFormData(prev => ({
-                                                            ...prev,
-                                                            selectedDays: prev.selectedDays.includes(idx) ? prev.selectedDays.filter(d => d !== idx) : [...prev.selectedDays, idx]
-                                                        }));
-                                                    }} />
-                                                    <span>{label}</span>
-                                                </label>
-                                            ))}
-                                        </div>
+                    {isOwner && (
+                        <>
+                            {/* Pending requests */}
+                            <section className="slots-section">
+                                <h3 className="form-header">Pending Requests</h3>
+                                {pendingRequests.length === 0 ? <p>No pending requests.</p> : (
+                                    <div className="slots-list">
+                                        {pendingRequests.map(req => (
+                                            <div key={req.id} className="request-card">
+                                                <div>
+                                                    <strong>{req.requester?.first_name} {req.requester?.last_name}</strong>
+                                                    {req.requester?.email && <span> ({req.requester.email})</span>}
+                                                    <p>requested a meeting</p>
+                                                    <em>{formatSlotRange(req.start_time, req.end_time)}</em>
+                                                    <p>Message: {req.message}</p>
+                                                </div>
+                                                <div className="request-actions">
+                                                    <button onClick={() => handleAcceptRequest(req.id)}>Accept</button>
+                                                    <button onClick={() => handleDeclineRequest(req.id)}>Decline</button>
+                                                    {req.requester?.email && (
+                                                        <button onClick={() => emailOwner(req.requester.email)}>Email</button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
-                                <label>Start Time: <input type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required /></label>
-                                <label>End Time: <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required /></label>
-                                <label>Max Participants: <input type="number" name="maxParticipants" value={formData.maxParticipants} min="1" onChange={handleInputChange} /></label>
-                                <label>Recurring <input type="checkbox" name="isRecurring" checked={formData.isRecurring} onChange={handleInputChange} /></label>
-                                {formData.isRecurring && (
-                                    <label>Repeat (weeks): <input type="number" name="recurrenceWeeks" value={formData.recurrenceWeeks} min="1" onChange={handleInputChange} /></label>
-                                )}
-                                <label>Description <textarea className="description-textarea" name="description" value={formData.description} onChange={handleInputChange} rows={3} /></label>
-                                <button className="submit-button" type="submit">Create Slot</button>
-                            </form>
-                        </section>
+                            </section>
 
-                        <section className="slots-section">
-                            <div className="slots-header">
-                                <h3 className="form-header">Your Slots</h3>
-                                <button className="delete-all-button" onClick={deleteAllSlots}>Delete All Slots</button>
-                            </div>
-                            {slots.length === 0 ? <p>You have no slots created yet.</p> : (
-                                <div className="slots-list">
-                                    {[...slots].sort((a,b) => new Date(a.start_time) - new Date(b.start_time)).map((slot) => {
-                                        const bookers = ownerReservations.filter(r => Number(r.slot_id) === Number(slot.id));
-                                        const isExpanded = expandedSlots.has(slot.id);
-                                        return (
-                                            <div key={slot.id} className="slot-card" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <div className="slot-details">
-                                                        <h4>{slot.title}</h4>
-                                                        <p>{formatSlotRange(slot.start_time, slot.end_time)}</p>
-                                                        
-                                                        <div className="capacity-info">
-                                                            <p className={`capacity-text ${bookers.length > 0 ? 'has-bookings' : ''}`}>
-                                                                {bookers.length} / {slot.max_participants || 1} reserved
-                                                            </p>
-                                                            {bookers.length > 0 && (
-                                                                <button 
-                                                                    className="toggle-bookers-btn"
-                                                                    onClick={() => toggleSlotExpansion(slot.id)}
-                                                                >
-                                                                    {isExpanded ? "Hide Details" : "Show Details"}
-                                                                </button>
+                            {/* Create slot form */}
+                            <section className="dashboard-section">
+                                <h3 className="form-header">Create a slot</h3>
+                                <form className="slot-form" onSubmit={createSlot}>
+                                    <label>Slot Title:
+                                        <input type="text" name="slotTitle" value={formData.slotTitle} onChange={handleInputChange} required />
+                                    </label>
+                                    <label>Slot Type:
+                                        <select name="slotType" value={formData.slotType} onChange={handleInputChange} required>
+                                            <option value="" disabled>Select slot type</option>
+                                            <option value="general slot">General Slot</option>
+                                            <option value="group">Group Meeting</option>
+                                            <option value="office hours">Office Hours</option>
+                                        </select>
+                                    </label>
+                                    <label>Start Date:
+                                        <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
+                                    </label>
+                                    <label>Single Day / Multiple Days
+                                        <select name="mode" value={formData.mode} onChange={handleInputChange}>
+                                            <option value="single">Single Day</option>
+                                            <option value="multiple">Multiple Days</option>
+                                        </select>
+                                    </label>
+                                    {formData.mode === "multiple" && (
+                                        <div className="weekday-section">
+                                            <label className="weekday-title">Select Days:</label>
+                                            <div className="weekday-grid">
+                                                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label, idx) => (
+                                                    <label key={idx} className="weekday-pill">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.selectedDays.includes(idx)}
+                                                            onChange={() => {
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    selectedDays: prev.selectedDays.includes(idx)
+                                                                        ? prev.selectedDays.filter(d => d !== idx)
+                                                                        : [...prev.selectedDays, idx]
+                                                                }));
+                                                            }}
+                                                        />
+                                                        <span>{label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <label>Start Time: <input type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required /></label>
+                                    <label>End Time: <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required /></label>
+                                    <label>Max Participants: <input type="number" name="maxParticipants" value={formData.maxParticipants} min="1" onChange={handleInputChange} /></label>
+                                    <label>Recurring <input type="checkbox" name="isRecurring" checked={formData.isRecurring} onChange={handleInputChange} /></label>
+                                    {formData.isRecurring && (
+                                        <label>Repeat (weeks): <input type="number" name="recurrenceWeeks" value={formData.recurrenceWeeks} min="1" onChange={handleInputChange} /></label>
+                                    )}
+                                    <label>Description <textarea className="description-textarea" name="description" value={formData.description} onChange={handleInputChange} rows={3} /></label>
+                                    <button className="submit-button" type="submit">Create Slot</button>
+                                </form>
+                            </section>
+
+                            {/* Slots list with batch grouping */}
+                            <section className="slots-section">
+                                <div className="slots-header">
+                                    <h3 className="form-header">Your Slots</h3>
+                                    <button className="delete-all-button" onClick={deleteAllSlots}>Delete All Slots</button>
+                                </div>
+                                {slots.length === 0 ? <p>You have no slots created yet.</p> : (
+                                    <div className="slots-list">
+                                        {Object.entries(groupedSlots).map(([batchKey, batchSlots]) => {
+                                            const isBatch = batchSlots.length > 1;
+                                            const isExpanded = expandedBatches.has(batchKey);
+                                            const representative = batchSlots[0];
+
+                                            const allActive = batchSlots.every(s => s.status === "active");
+                                            const allPrivate = batchSlots.every(s => s.status === "private");
+                                            const allBooked = batchSlots.every(s => s.status === "booked");
+                                            const hasBooked = batchSlots.some(s => s.status === "booked");
+                                            const batchStatus = allActive ? "active" : allPrivate ? "private" : allBooked ? "booked" : "mixed";
+
+                                            const { daysLabel, timeRange, spanLabel } = isBatch
+                                                ? getBatchSummary(batchSlots)
+                                                : {};
+
+                                            return (
+                                                <div key={batchKey} className="slot-card">
+                                                    {/* Batch/slot header row */}
+                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                                                        <div className="slot-details">
+                                                            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                                                <h4>{representative.title}</h4>
+                                                                {isBatch && (
+                                                                    <span style={{ fontSize: "0.75rem", background: "#e0f2fe", color: "#0369a1", padding: "2px 8px", borderRadius: "99px", whiteSpace: "nowrap" }}>
+                                                                        {batchSlots.length} slots
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {isBatch ? (
+                                                                <>
+                                                                    <p style={{ margin: "2px 0" }}>
+                                                                        <strong>{daysLabel}</strong>
+                                                                        <span style={{ color: "#6b7280", margin: "0 6px" }}>·</span>
+                                                                        {timeRange}
+                                                                    </p>
+                                                                    <p style={{ margin: "2px 0", fontSize: "0.85rem", color: "#6b7280" }}>{spanLabel}</p>
+                                                                </>
+                                                            ) : (
+                                                                <p>{formatSlotRange(representative.start_time, representative.end_time)}</p>
+                                                            )}
+                                                            <p>Type: {representative.slot_type}</p>
+                                                        </div>
+
+                                                        {/* Actions */}
+                                                        <div className="slot-actions">
+                                                            {isBatch ? (
+                                                                <>
+                                                                    {batchStatus === "booked" && <span className="booked-label">All Booked</span>}
+                                                                    {batchStatus === "mixed" && (
+                                                                        <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>Mixed</span>
+                                                                    )}
+
+                                                                    {/* Bulk visibility toggle — only when no booked slots and status is uniform */}
+                                                                    {!hasBooked && (batchStatus === "active" || batchStatus === "private") && (
+                                                                        <button
+                                                                            className="secondary-button"
+                                                                            onClick={() => toggleBatchVisibility(representative.batch_id, batchStatus)}
+                                                                        >
+                                                                            {batchStatus === "active" ? "Make All Private" : "Make All Public"}
+                                                                        </button>
+                                                                    )}
+
+                                                                    <button className="invite-button" onClick={generateInviteURL}>Invite</button>
+                                                                    <button className="delete-button" onClick={() => deleteBatch(representative.batch_id)}>Delete All</button>
+                                                                    <button
+                                                                        className="secondary-button"
+                                                                        onClick={() => toggleBatchExpand(batchKey)}
+                                                                        aria-expanded={isExpanded}
+                                                                    >
+                                                                        {isExpanded ? "Collapse ▲" : "Expand ▼"}
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    {representative.status === "booked" ? (
+                                                                        <span className="booked-label">Booked</span>
+                                                                    ) : (
+                                                                        <label className="visibility-toggle">
+                                                                            <span>{representative.status === "active" ? "Public" : "Private"}</span>
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={representative.status === "active"}
+                                                                                onChange={() => toggleVisibility(representative.id)}
+                                                                            />
+                                                                            <span className="toggle-slider"></span>
+                                                                        </label>
+                                                                    )}
+                                                                    <button className="invite-button" onClick={generateInviteURL}>Invite</button>
+                                                                    <button className="delete-button" onClick={() => deleteSlot(representative.id)}>Delete</button>
+                                                                </>
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="slot-actions">
-                                                        {slot.status === "booked" ? <span className="booked-label">Full</span> : (
-                                                            <label className="visibility-toggle">
-                                                                <span>{slot.status === "active" ? "Public" : "Private"}</span>
-                                                                <input type="checkbox" checked={slot.status === "active"} onChange={() => toggleVisibility(slot.id)} />
-                                                                <span className="toggle-slider"></span>
-                                                            </label>
-                                                        )}
-                                                        <button className="invite-button" onClick={() => generateInviteURL(slot)}>Invite</button>
-                                                        <button className="delete-button" onClick={() => deleteSlot(slot.id)}>Delete</button>
-                                                    </div>
-                                                </div>
 
-                                                {isExpanded && bookers.length > 0 && (
-                                                    <div className="bookers-dropdown">
-                                                        <div className="bookers-header">
-                                                            <strong style={{ fontSize: '0.95rem' }}>Confirmed Participants:</strong>
-                                                            <button 
-                                                                className="secondary-button" 
-                                                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                                                                onClick={() => openMailClient({ to: bookers.map(b => b.user?.email).join(",") })}
-                                                            >
-                                                                Email All
-                                                            </button>
-                                                        </div>
-                                                        <ul className="bookers-list">
-                                                            {bookers.map(b => (
-                                                                <li key={b.id} className="booker-item">
-                                                                    <span className="booker-name">{b.user?.first_name} {b.user?.last_name} ({b.user?.email})</span>
-                                                                    <button 
-                                                                        className="email-individual-link"
-                                                                        onClick={() => openMailClient({ to: b.user?.email })}
+                                                    {/* Expanded individual slots within a batch */}
+                                                    {isBatch && isExpanded && (
+                                                        <div style={{
+                                                            marginTop: "12px",
+                                                            borderTop: "1px solid #e5e7eb",
+                                                            paddingTop: "12px",
+                                                            display: "flex",
+                                                            flexDirection: "column",
+                                                            gap: "8px"
+                                                        }}>
+                                                            {batchSlots.map(slot => {
+                                                                const booker = ownerReservations.find(r => Number(r.slot_id) === Number(slot.id));
+                                                                return (
+                                                                    <div
+                                                                        key={slot.id}
+                                                                        style={{
+                                                                            display: "flex",
+                                                                            justifyContent: "space-between",
+                                                                            alignItems: "center",
+                                                                            padding: "10px 12px",
+                                                                            background: "#f9fafb",
+                                                                            borderRadius: "8px",
+                                                                            gap: "12px"
+                                                                        }}
                                                                     >
-                                                                        Email
-                                                                    </button>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </section>
-                    </>
-                )}
-            </div>
-        </main>
-    </div>
-  );
+                                                                        <div>
+                                                                            <p style={{ margin: 0, fontWeight: 500 }}>
+                                                                                {formatSlotRange(slot.start_time, slot.end_time)}
+                                                                            </p>
+                                                                            <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#6b7280" }}>
+                                                                                Status:{" "}
+                                                                                <span style={{ textTransform: "capitalize", fontWeight: 500 }}>
+                                                                                    {slot.status}
+                                                                                </span>
+                                                                            </p>
+                                                                            {booker && (
+                                                                                <p style={{ margin: "4px 0 0", fontSize: "0.8rem", color: "#0369a1" }}>
+                                                                                    Booked by {booker.user?.first_name} {booker.user?.last_name} ({booker.user?.email})
+                                                                                    <button
+                                                                                        className="secondary-button"
+                                                                                        style={{ padding: "2px 6px", fontSize: "0.75rem", marginLeft: "8px" }}
+                                                                                        onClick={() => emailOwner(booker.user?.email)}
+                                                                                    >
+                                                                                        Email
+                                                                                    </button>
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="slot-actions">
+                                                                            {slot.status === "booked" ? (
+                                                                                <span className="booked-label">Booked</span>
+                                                                            ) : (
+                                                                                <label className="visibility-toggle">
+                                                                                    <span>{slot.status === "active" ? "Public" : "Private"}</span>
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        checked={slot.status === "active"}
+                                                                                        onChange={() => toggleVisibility(slot.id)}
+                                                                                    />
+                                                                                    <span className="toggle-slider"></span>
+                                                                                </label>
+                                                                            )}
+                                                                            <button
+                                                                                className="delete-button"
+                                                                                onClick={() => deleteSlot(slot.id)}
+                                                                            >
+                                                                                Delete
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </section>
+                        </>
+                    )}
+                </div>
+            </main>
+        </div>
+    );
 }
 
 export default Dashboard;
