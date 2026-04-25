@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from datetime import timedelta
 from typing import Optional, List
 
@@ -76,6 +77,7 @@ def create_bulk_slots(
         raise HTTPException(400, "At least one slot is required")
 
     created_slots: list[BookingSlot] = []
+    batch_id = str(uuid.uuid4())
     for slot_data in payload.slots:
         if slot_data.end_time <= slot_data.start_time:
             raise HTTPException(400, "Each slot end_time must be after start_time")
@@ -88,6 +90,7 @@ def create_bulk_slots(
             data["start_time"] = start_time
             data["end_time"] = end_time
             data["owner_id"] = owner.user_id
+            data["batch_id"] = batch_id
             slot = BookingSlot(**data)
 
             session.add(slot)
@@ -136,6 +139,30 @@ def activate_slot(
     session.refresh(slot)
     return slot
 
+
+# Owner: activate slot(s) based on the batch id
+@router.patch("/batch/{batch_id}/activate", response_model=list[BookingSlotRead])
+def activate_batch(batch_id: str, session: Session = Depends(get_session), owner: User = Depends(get_owner)):
+    slots = session.exec(
+        select(BookingSlot).where(BookingSlot.batch_id == batch_id, BookingSlot.owner_id == owner.user_id)
+    ).all()
+    if not slots:
+        raise HTTPException(404, "Batch not found")
+    
+    # Validate all slots first before mutating any
+    for slot in slots:
+        if slot.status == SlotStatus.PRIVATE:
+            check_slot_overlap(owner.user_id, slot.start_time, slot.end_time, session, slot.id)
+    
+    # Only mutate once all checks pass
+    for slot in slots:
+        if slot.status == SlotStatus.PRIVATE:
+            slot.status = SlotStatus.ACTIVE
+            
+    session.commit()
+    return slots
+
+
 # Owner: deactivate a slot 
 @router.patch("/{slot_id}/deactivate", response_model=BookingSlotRead)
 def deactivate_slot(
@@ -145,13 +172,43 @@ def deactivate_slot(
 ):
     slot = _get_owned_slot(slot_id, owner, session)
 
-    if slot.status != SlotStatus.ACTIVE:
-        raise HTTPException(400, "Only ACTIVE slots can be deactivated")
+    has_reservations = session.exec(
+        select(Reservation).where(Reservation.slot_id == slot.id)
+    ).first()
+    if has_reservations:
+        raise HTTPException(400, "Cannot deactivate a slot with existing reservations. Delete it instead to notify bookers.")
 
     slot.status = SlotStatus.PRIVATE
     session.commit()
     session.refresh(slot)
     return slot
+
+
+# Owner: deactivate slot(s) based on batch_id
+@router.patch("/batch/{batch_id}/deactivate", response_model=list[BookingSlotRead])
+def deactivate_batch(batch_id: str, session: Session = Depends(get_session), owner: User = Depends(get_owner)):
+    slots = session.exec(
+        select(BookingSlot).where(BookingSlot.batch_id == batch_id, BookingSlot.owner_id == owner.user_id)
+    ).all()
+    if not slots:
+        raise HTTPException(404, "Batch not found")
+    
+    for slot in slots:
+        if slot.status == SlotStatus.BOOKED:
+            raise HTTPException(400, f"Slot '{slot.title}' on {slot.start_time.strftime('%B %d at %H:%M')} has reservations. Delete the batch instead to notify bookers.")
+        elif slot.status == SlotStatus.ACTIVE:
+            has_reservations = session.exec(
+                select(Reservation).where(Reservation.slot_id == slot.id)
+            ).first()
+            if has_reservations:
+                raise HTTPException(400, f"Slot '{slot.title}' on {slot.start_time.strftime('%B %d at %H:%M')} has reservations. Delete the batch instead to notify bookers.")
+            
+    for slot in slots:
+        slot.status = SlotStatus.PRIVATE
+        
+    session.commit()
+    return slots
+
 
 # Owner: create/retrieve invitation link
 @router.post("/invite-link", response_model=InviteLinkResponse)
@@ -268,6 +325,33 @@ def delete_slot(
 
     return mailto
 
+# Owner: delete slot(s) based on uuid
+@router.delete("/batch/{batch_id}", response_model=Optional[MailtoResponse])
+def delete_batch(batch_id: str, session: Session = Depends(get_session), owner: User = Depends(get_owner)):
+    slots = session.exec(
+        select(BookingSlot).where(BookingSlot.batch_id == batch_id, BookingSlot.owner_id == owner.user_id)
+    ).all()
+    if not slots:
+        raise HTTPException(404, "Batch not found")
+    
+    slot_ids = [slot.id for slot in slots]
+    emails_result = session.exec(
+        select(User.email).join(Reservation, Reservation.user_id == User.user_id)
+        .where(Reservation.slot_id.in_(slot_ids))
+    ).all()
+    
+    mailto = None
+    if emails_result:
+        mailto = build_mailto(
+            to=",".join(set(emails_result)),
+            subject=f"Cancellation: {slots[0].title}",
+            body=f"One or more slots you booked have been cancelled by the owner."
+        )
+    
+    for slot in slots:
+        session.delete(slot)
+    session.commit()
+    return mailto
 
 # Owner: view who booked each slot 
 @router.get("/{slot_id}/reservations", response_model=List[UserRead])

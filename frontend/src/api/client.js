@@ -12,7 +12,10 @@ async function fetchAuth(endpoint, options = {}) {
   
   if (!res.ok) {
     const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.detail || "Error");
+    const message = typeof errorBody.detail === "string"
+      ? errorBody.detail
+      : JSON.stringify(errorBody.detail ?? errorBody);
+  throw new Error(message);
   }
 
   // Handle 204 No Content or empty responses
@@ -72,6 +75,9 @@ export const slots = {
   regenerateInviteLink: () => fetchAuth("/slots/invite-link/regenerate", { method: "POST" }),
   getOwners: () => fetchAuth("/slots/owners"),
   getByOwner: (id) => fetchAuth(`/slots/owner/${id}`),
+  activateBatch: (batchId) => fetchAuth(`/slots/batch/${batchId}/activate`, { method: "PATCH" }),
+  deactivateBatch: (batchId) => fetchAuth(`/slots/batch/${batchId}/deactivate`, { method: "PATCH" }),
+  deleteBatch: (batchId) => fetchAuth(`/slots/batch/${batchId}`, { method: "DELETE" }),
 };
 
 export const reservations = {
