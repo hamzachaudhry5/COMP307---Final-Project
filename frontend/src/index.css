@@ -523,3 +523,75 @@ button {
   width: fit-content;
   margin-bottom: 16px;
 }
+
+.secondary-button {
+  background-color: #4b5563;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  width: fit-content;
+}
+
+.heatmap-container {
+    margin-top: 20px;
+}
+
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.heatmap-cell {
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    transition: transform 0.2s;
+}
+
+.heatmap-cell:hover {
+    transform: scale(1.02);
+    border-color: #a6192e;
+}
+
+.heatmap-cell strong {
+    font-size: 0.9rem;
+}
+
+.heatmap-cell span {
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.user-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.user-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f1f5f9;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.booked-label {
+    background: #e2e8f0;
+    color: #475569;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.85rem;
+}

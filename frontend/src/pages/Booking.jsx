@@ -31,6 +31,10 @@ function Booking() {
     const calendarItems = appointments.map(reservation => reservation.slot);
     const [inviteOwner, setInviteOwner] = useState(null);
 
+    const [groupInvites, setGroupInvites] = useState([]);
+    const [votingMeeting, setVotingMeeting] = useState(null);
+    const [selectedOptions, setSelectedOptions] = useState([]);
+
     // const queryParams = new URLSearchParams(location.search);
     // const ownerIdFromURL = queryParams.get("ownerId"); 
     const { token } = useParams();
@@ -45,7 +49,7 @@ function Booking() {
     useEffect(() => {
         if (isLoading || !user) return;
 
-        async function loadOwners() {
+        async function loadData() {
             try {
                 setPageLoading(true);
 
@@ -54,15 +58,19 @@ function Booking() {
 
                 const myReservations = await api.reservations.getMy();
                 setAppointments(myReservations);
+
+                const myGroupInvites = await api.groupMeetings.getInvites();
+                setGroupInvites(myGroupInvites);
+
             } catch (err) {
                 console.error(err);
-                setError(err.message || "Failed to load owners");
+                setError(err.message || "Failed to load data");
             } finally {
                 setPageLoading(false);
             }
         }
 
-        loadOwners();
+        loadData();
     }, [isLoading, user]);
 
     useEffect(() => {
@@ -165,7 +173,7 @@ function Booking() {
 
         try {
             setBookingSlotId(slotId);
-            await api.reservations.create(slotId);
+            const response = await api.reservations.create(slotId);
 
             setSlots(prev => prev.filter(slot => slot.id !== slotId));
             
@@ -173,12 +181,31 @@ function Booking() {
             setAppointments(myReservations);
 
             alert("Appointment booked!");
+            if (response?.mailto) {
+                openMailClient(response.mailto);
+            }
         } catch (err) {
             console.error(err);
             alert("Failed to book appointment");
         } finally {
             setBookingSlotId(null);
         }
+    }
+
+    async function handleVote(meetingId) {
+        try {
+            await api.groupMeetings.vote(meetingId, { option_ids: selectedOptions });
+            alert("Votes submitted successfully!");
+            setVotingMeeting(null);
+            setSelectedOptions([]);
+        } catch (err) {
+            alert(err.message);
+        }
+    }
+
+    function openMailClient(response) {
+        const mailtoURL = `mailto:${response.to}?subject=${encodeURIComponent(response.subject || "")}&body=${encodeURIComponent(response.body || "")}`;
+        window.location.href = mailtoURL;
     }
 
     async function handleLogout() {
@@ -328,6 +355,55 @@ function Booking() {
                     </div>
                 </section>
 
+                {/* Group Meeting Invitations */}
+                {groupInvites.length > 0 && (
+                    <section className="dashboard-section">
+                        <h3 className="form-header">Group Meeting Invitations</h3>
+                        <div className="slots-list">
+                            {groupInvites.map(invite => (
+                                <div key={invite.id} className="slot-card">
+                                    <div className="slot-details">
+                                        <h4>{invite.title}</h4>
+                                        <p>{invite.description}</p>
+                                    </div>
+                                    <div className="slot-actions">
+                                        {!invite.is_finalized ? (
+                                            <button className="submit-button" onClick={() => setVotingMeeting(invite)}>Vote Availability</button>
+                                        ) : (
+                                            <span className="booked-label">Finalized</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {votingMeeting && (
+                    <section className="dashboard-section">
+                        <h3 className="form-header">Voting for: {votingMeeting.title}</h3>
+                        <p>Select all times you are available:</p>
+                        <div className="weekday-grid">
+                            {votingMeeting.availability_options.map(opt => (
+                                <label key={opt.id} className="weekday-pill" style={{ width: 'auto', padding: '10px' }}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedOptions.includes(opt.id)}
+                                        onChange={() => setSelectedOptions(prev => 
+                                            prev.includes(opt.id) ? prev.filter(id => id !== opt.id) : [...prev, opt.id]
+                                        )}
+                                    />
+                                    <span>{new Date(opt.start_time).toLocaleString()}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <div style={{ marginTop: '20px' }}>
+                            <button className="submit-button" onClick={() => handleVote(votingMeeting.id)}>Submit Votes</button>
+                            <button className="delete-button" onClick={() => {setVotingMeeting(null); setSelectedOptions([]);}}>Cancel</button>
+                        </div>
+                    </section>
+                )}
+
                 {/* Slots List */}       
                 <div className="container">
                     <section className="dashboard-section">
@@ -344,11 +420,24 @@ function Booking() {
 
                                 {owners.map(owner => (
                                     <option key={owner.user_id} value={owner.user_id}>
-                                        {owner.first_name} {owner.last_name}
+                                        {owner.first_name} {owner.last_name} ({owner.email})
                                     </option>
                                 ))}
                             </select>
                         </label>
+
+                        {selectedOwnerId && (
+                            <button 
+                                className="secondary-button" 
+                                style={{ marginLeft: '10px' }}
+                                onClick={() => {
+                                    const owner = owners.find(o => String(o.user_id) === String(selectedOwnerId));
+                                    if (owner) window.location.href = `mailto:${owner.email}`;
+                                }}
+                            >
+                                Email Owner
+                            </button>
+                        )}
 
                         {error && <p className="error-message">{error}</p>}
 

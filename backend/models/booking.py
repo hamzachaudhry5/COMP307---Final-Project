@@ -102,6 +102,7 @@ class ReservationRead(SQLModel):
     user_id: int
     reserved_at: datetime
     slot: Optional[BookingSlotRead] = None
+    user: Optional["MeetingRequesterRead"] = None
 
     class Config:
         from_attributes = True

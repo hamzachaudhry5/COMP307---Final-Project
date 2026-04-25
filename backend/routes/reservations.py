@@ -153,8 +153,15 @@ def owner_reservations(
     if not owned_slot_ids:
         return []
 
-    return session.exec(
+    # Get reservations and ensure user data is joined/available
+    results = session.exec(
         select(Reservation).where(
             Reservation.slot_id.in_(owned_slot_ids),
         )
     ).all()
+
+    # Force loading requester info for each reservation to satisfy ReservationRead.user
+    for res in results:
+        res.user = session.get(User, res.user_id)
+
+    return results
