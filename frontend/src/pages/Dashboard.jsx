@@ -645,18 +645,22 @@ function Dashboard() {
                                                             {isBatch ? (
                                                                 <>
                                                                     {batchStatus === "booked" && <span className="booked-label">All Booked</span>}
-                                                                    {batchStatus === "mixed" && (
-                                                                        <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>Mixed</span>
-                                                                    )}
 
-                                                                    {/* Bulk visibility toggle — only when no booked slots and status is uniform */}
-                                                                    {!hasBooked && (batchStatus === "active" || batchStatus === "private") && (
-                                                                        <button
-                                                                            className="secondary-button"
-                                                                            onClick={() => toggleBatchVisibility(representative.batch_id, batchStatus)}
-                                                                        >
-                                                                            {batchStatus === "active" ? "Make All Private" : "Make All Public"}
-                                                                        </button>
+                                                                    {!hasBooked && (
+                                                                        <>
+                                                                            <button
+                                                                                className="secondary-button"
+                                                                                onClick={() => toggleBatchVisibility(representative.batch_id, "private")}
+                                                                            >
+                                                                                Make All Public
+                                                                            </button>
+                                                                            <button
+                                                                                className="secondary-button"
+                                                                                onClick={() => toggleBatchVisibility(representative.batch_id, "active")}
+                                                                            >
+                                                                                Make All Private
+                                                                            </button>
+                                                                        </>
                                                                     )}
 
                                                                     <button className="invite-button" onClick={generateInviteURL}>Invite</button>
