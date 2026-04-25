@@ -514,9 +514,9 @@ function Dashboard() {
                                 <label>Slot Type:
                                     <select name="slotType" value={formData.slotType} onChange={handleInputChange} required>
                                         <option value="" disabled>Select slot type</option>
-                                        <option value="request">Request</option>
-                                        <option value="group">Group</option>
-                                        <option value="office_hours">Office Hours</option>
+                                        <option value="general slot">General Slot</option>
+                                        <option value="group meeting">Group Meeting</option>
+                                        <option value="office hours">Office Hours</option>
                                     </select>
                                 </label>
                                 <label>Start Date:
