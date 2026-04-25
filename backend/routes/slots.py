@@ -256,8 +256,13 @@ def delete_slot(
             ),
         )
 
-    # Database-level cascades handle reservations, meeting_requests, etc.
-    # GroupMeeting.finalized_slot_id is SET NULL automatically.
+    linked_meetings = session.exec(
+        select(GroupMeeting).where(GroupMeeting.finalized_slot_id == slot_id)
+    ).all()
+    for meeting in linked_meetings:
+        meeting.is_finalized = False
+        session.add(meeting)
+
     session.delete(slot)
     session.commit()
 
