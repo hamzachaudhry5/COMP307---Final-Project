@@ -52,6 +52,7 @@ export const slots = {
   createBulk: (data) => fetchAuth("/slots/bulk", { method: "POST", body: JSON.stringify(data) }),
   getMine: () => fetchAuth("/slots/mine"),
   activate: (id) => fetchAuth(`/slots/${id}/activate`, { method: "PATCH" }),
+  deactivate: (id) => fetchAuth(`/slots/${id}/deactivate`, { method: "PATCH" }),
   update: (id, data) => fetchAuth(`/slots/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id) => fetchAuth(`/slots/${id}`, { method: "DELETE" }),
   getBookers: (id) => fetchAuth(`/slots/${id}/reservations`),

@@ -14,6 +14,7 @@ from models.booking import (
     MailtoResponse,
     Reservation,
     SlotStatus,
+    MeetingRequest,
     build_mailto,
 )
 from models.users import User, UserRole, UserRead, InviteLinkResponse
@@ -134,6 +135,22 @@ def activate_slot(
     session.refresh(slot)
     return slot
 
+# Owner: deactivate a slot 
+@router.patch("/{slot_id}/deactivate", response_model=BookingSlotRead)
+def deactivate_slot(
+    slot_id: int,
+    session: Session = Depends(get_session),
+    owner: User = Depends(get_owner),
+):
+    slot = _get_owned_slot(slot_id, owner, session)
+
+    if slot.status != SlotStatus.ACTIVE:
+        raise HTTPException(400, "Only ACTIVE slots can be deactivated")
+
+    slot.status = SlotStatus.PRIVATE
+    session.commit()
+    session.refresh(slot)
+    return slot
 
 # Owner: create/retrieve invitation link
 @router.post("/invite-link", response_model=InviteLinkResponse)
@@ -220,6 +237,7 @@ def delete_slot(
         .where(Reservation.slot_id == slot_id)
     )
     results = session.exec(statement).all()
+    
 
     mailto = None
     if results:
@@ -236,8 +254,16 @@ def delete_slot(
             ),
         )
 
-        for reservation, _ in results:
-            session.delete(reservation)
+    reservations = session.exec(select(Reservation).where(Reservation.slot_id == slot_id)).all()
+    for reservation in reservations:
+        session.delete(reservation)
+
+    linked_requests = session.exec(
+        select(MeetingRequest).where(MeetingRequest.booking_slot_id == slot_id)
+    ).all()
+
+    for req in linked_requests:
+        session.delete(req)
 
     session.delete(slot)
     session.commit()

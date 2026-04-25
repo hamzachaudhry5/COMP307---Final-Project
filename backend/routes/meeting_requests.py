@@ -76,12 +76,20 @@ def incoming_requests(
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    return session.exec(
+    requests = session.exec(
         select(MeetingRequest).where(
             MeetingRequest.owner_id == owner.user_id,
             MeetingRequest.status == RequestStatus.PENDING,
         )
     ).all()
+
+    return [
+        {
+            **req.model_dump(),
+            "requester": session.get(User, req.requester_id),
+        }
+        for req in requests
+    ]
 
 
 # Owner: accept a request → creates a slot + reservation 

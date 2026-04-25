@@ -14,6 +14,7 @@ function Booking() {
     const [bookingSlotId, setBookingSlotId] = useState(null);
     const [error, setError] = useState("");
 
+    const [sentRequests, setSentRequests] = useState([]);
     const [pendingRequests, setPendingRequests] = useState([]);
     const [requestData, setRequestData] = useState({
         date: "",
@@ -132,7 +133,7 @@ function Booking() {
         }
 
         try {
-            await api.meetingRequests.create({
+            await api.meetingRequests.send({
                 owner_id: Number(selectedOwnerId),
                 start_time: `${requestData.date}T${requestData.startTime}:00`,
                 end_time: `${requestData.date}T${requestData.endTime}:00`,
@@ -348,8 +349,67 @@ function Booking() {
                         {pageLoading && <p>Loading...</p>}
 
                         {!pageLoading && selectedOwnerId && slots.length === 0 && (
-                            <p>No public slots available for this owner.</p>
+                            <p><br></br>No public slots available for this owner.</p>
                         )}
+
+                        <section className="dashboard-section">
+                            <h3 className="form-header">Request a meeting with <></>
+                            <span className="owner-name">
+                                {owners.find(o => String(o.user_id) === String(selectedOwnerId))?.first_name} 
+                                <> </>
+                                {owners.find(o => String(o.user_id) === String(selectedOwnerId))?.last_name}:</span></h3>
+                            
+                            <form className="slot-form" onSubmit={requestMeeting}>
+
+                                <label>Date:
+                                    <input 
+                                        id="date" 
+                                        type="date" 
+                                        name="date" 
+                                        value={requestData.date} 
+                                        onChange={e => setRequestData(prev => ({ ...prev, date: e.target.value }))} 
+                                        required 
+                                    />
+                                </label>
+
+                                <label>Start Time:
+                                    <input 
+                                        id="startTime" 
+                                        type="time" 
+                                        name="startTime" 
+                                        value={requestData.startTime} 
+                                        onChange={e => setRequestData(prev => ({ ...prev, startTime: e.target.value }))}
+                                        required 
+                                    />
+                                </label>
+
+                                <label>End Time:
+                                    <input 
+                                        id="endTime" 
+                                        type="time" 
+                                        name="endTime" 
+                                        value={requestData.endTime} 
+                                        onChange={e => setRequestData(prev => ({ ...prev, endTime: e.target.value }))}
+                                        required 
+                                    />
+                                </label>
+
+
+                                <label>Description
+                                    <textarea className="description-textarea"
+                                        name="description"
+                                        value={requestData.message}
+                                        onChange={e => setRequestData(prev => ({ ...prev, message: e.target.value }))}
+                                        placeholder="Details about this meeting..."
+                                        rows={3}
+                                    />
+                                </label>
+
+                                <button className="submit-button" type="submit">
+                                    Submit Meeting Request
+                                </button>
+                            </form>
+                        </section>
                         
                         <div className="slots-list">
                             {slots.map(slot => (

@@ -23,6 +23,7 @@ function Dashboard() {
         mode: "single",
         selectedDays: []
     });
+
     const [appointments, setAppointments] = useState([])    
     const [pendingRequests, setPendingRequests] = useState([]);
     const [requestData, setRequestData] = useState({
@@ -36,8 +37,17 @@ function Dashboard() {
     const weekLabel = getWeekRange(weekDays);
 
     /* Private slots */
-    const visibleOwnerSlots = isOwner ? slots.filter(slot => slot.isPublic) : [];
-    const calendarItems = [...appointments, ...visibleOwnerSlots];
+    const visibleOwnerSlots = isOwner
+        ? slots.filter(slot =>
+            slot.status === "active" || slot.status === "booked"
+        )
+        : [];
+    
+    const appointmentSlots = appointments
+        .map(reservation => reservation.slot || reservation)
+        .filter(Boolean);
+
+    const calendarItems = [...appointmentSlots, ...visibleOwnerSlots];
 
     useEffect(() => {
         if (isLoading || !user) return;
@@ -48,6 +58,20 @@ function Dashboard() {
                 setAppointments(myReservations);
             } catch (err) {
                 console.error("Failed to load reservations:", err);
+            }
+
+            try {
+                const allOwners = await api.slots.getOwners();
+                setOwners(allOwners);
+            } catch (err) {
+                console.error("Failed to load owners:", err);
+            }
+
+            try {
+                const sentRequests = await api.meetingRequests.getSent();
+                setSentRequests(sentRequests);
+            } catch (err) {
+                console.error("Failed to load sent requests:", err);
             }
 
             if (isOwner) {
@@ -61,12 +85,7 @@ function Dashboard() {
 
                 try {
                     const mySlots = await api.slots.getMine();
-                    setSlots(
-                        mySlots.map(slot => ({
-                            ...slot,
-                            isPublic: slot.status === "active"
-                        }))
-                    );
+                    setSlots(mySlots);
                 } catch (err) {
                     console.error("Failed to load slots:", err);
                 }
@@ -186,8 +205,22 @@ function Dashboard() {
         if (!confirmed) return;
 
         try {
+            const matchingReservation = appointments.find(r => 
+                Number(r.slot?.id) === Number(slotId) || 
+                Number(r.slot_id) === Number(slotId)
+            );
+            if (matchingReservation) {
+                await api.reservations.cancel(matchingReservation.id);
+            }
+
             await api.slots.delete(slotId);
             setSlots(prev => prev.filter(slot => slot.id !== slotId));
+                    setAppointments(prev =>
+            prev.filter(r =>
+                Number(r.slot?.id) !== Number(slotId) &&
+                Number(r.slot_id) !== Number(slotId)
+            )
+        );
 
         } catch (err) {
             console.error(err);
@@ -195,6 +228,50 @@ function Dashboard() {
         }
     }
 
+    // Bulk deletion of all slots
+    async function deleteAllSlots() {
+        const confirmed = window.confirm("Delete ALL your slots? This cannot be undone.");
+        if (!confirmed) return;
+
+        try {
+            for (const slot of slots) {
+                const matchingReservation = appointments.find(r => 
+                    Number(r.slot?.id) === Number(slot.id) || 
+                    Number(r.slot_id) === Number(slot.id)
+                );
+                if (matchingReservation) {
+                    await api.reservations.cancel(matchingReservation.id);
+                }
+                await api.slots.delete(slot.id);
+            }
+            setSlots([]);
+            setAppointments(prev =>
+                prev.filter(r =>
+                    !slots.some(slot =>
+                        Number(r.slot?.id) === Number(slot.id) ||
+                        Number(r.slot_id) === Number(slot.id)
+                    )
+                )
+            );
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete all slots");
+        }
+    }
+    
+    async function cancelReservation(reservationId) {
+        const confirmed = window.confirm("Cancel this reservation?");
+        if (!confirmed) return;
+
+        try {
+            await api.reservations.cancel(reservationId);
+            setAppointments(prev => prev.filter(r => r.id !== reservationId));
+        } catch (err) {
+            console.error(err);
+            alert("Failed to cancel reservation");
+        }
+    }
+    
     async function generateInviteURL(slot) {
          try {
             const res = await api.slots.createInviteLink();
@@ -216,25 +293,18 @@ function Dashboard() {
     }
 
     async function toggleVisibility(slotId) {
-        const slot = slots.find(s => s.id === slotId);
+        const slot = slots.find(s => Number(s.id) === Number(slotId));
         if (!slot) return;
 
-        const newStatus = slot.isPublic ? "private" : "active";
-
         try {
-            const updatedSlot = await api.slots.update(slotId, {
-                status: newStatus
-            });
+            const isCurrentlyActive = slot.status === "active";
+            const updatedSlot = isCurrentlyActive
+                ? await api.slots.deactivate(slotId)
+                : await api.slots.activate(slotId)
 
             setSlots(prevSlots =>
                 prevSlots.map(s =>
-                    s.id === slotId
-                        ? {
-                            ...s,
-                            ...updatedSlot,
-                            isPublic: (updatedSlot?.status ?? newStatus) === "active"
-                        }
-                        : s
+                    Number(s.id) === Number(slotId) ? updatedSlot : s
                 )
             );
         } catch (err) {
@@ -245,20 +315,19 @@ function Dashboard() {
 
     async function handleAcceptRequest(requestId) {
         try {
-            await api.meetingRequests.accept(requestId);
-            pendingRequests(prev => prev.filter(r => r.id !== requestId));
+            const response = await api.meetingRequests.accept(requestId);
+            setPendingRequests(prev => prev.filter(r => r.id !== requestId));
 
             const myReservations = await api.reservations.getMy();
             setAppointments(myReservations);
 
             if (isOwner) {
                 const mySlots = await api.slots.getMine();
-                setSlots(
-                    mySlots.map(slot => ({
-                        ...slot,
-                        isPublic: slot.status === "active"
-                    }))
-                );
+                setSlots(mySlots);
+            }
+
+            if (response?.mailto) {
+                openMailClient(response.mailto);
             }
         } catch (err) {
             console.error(err);
@@ -269,7 +338,7 @@ function Dashboard() {
     async function handleDeclineRequest(requestId) {
         try {
             await api.meetingRequests.decline(requestId);
-            pendingRequests(prev => prev.filter(r => r.id !== requestId));
+            setPendingRequests(prev => prev.filter(r => r.id !== requestId));
         } catch (err) {
             console.error(err);
             alert("Failed to decline request");
@@ -283,6 +352,27 @@ function Dashboard() {
 
     function emailOwner(email) {
         window.location.href = `mailto:${email}`;
+    }
+
+    function openMailClient(response) {
+        if (typeof response === "string") {
+            window.location.href = response;
+            return;
+        }
+
+        if (response?.mailto || response?.url || response?.href) {
+            window.location.href = response.mailto || response.url || response.href;
+            return;
+        }
+
+        if (response?.to) {
+            const mailtoURL =
+                `mailto:${response.to}?subject=${encodeURIComponent(response.subject || "")}&body=${encodeURIComponent(response.body || "")}`;
+
+            window.location.href = mailtoURL;
+            return;
+        }
+        alert("No valid mailto or URL found in response");
     }
 
     function getWeekDays(offset = 0) {
@@ -440,33 +530,40 @@ function Dashboard() {
                 {isOwner && (
                     <>  
                         {/* PENDING REQUESTS */}
-                        <section>
-                            <h3 className="slots-section">Pending Requests</h3>
+                        <section className="slots-section">
+                            <h3 className="form-header">Pending Requests</h3>
                             {pendingRequests.length === 0 ? (
                                 <p>No pending requests.</p>
                             ) : (
-                        <div key={req.id} className="request-card">
-                            <div>
-                                <strong>
-                                    {req.requester?.first_name} {req.requester?.last_name}
-                                </strong>
-                                {" "}requested a meeting
-                                <br />
-                                <em>{formatSlotRange(req.start_time, req.end_time)}</em>
+                            <div className="slots-list">
+                                {pendingRequests.map(req => (
+                                    <div key={req.id} className="request-card">
+                                        <div>
+                                            <strong>
+                                                {req.requester?.first_name} {req.requester?.last_name}
+                                            </strong>
+                                            {req.requester?.email && (
+                                                <span> ({req.requester.email})</span>
+                                            )}
+                                            <></>requested a meeting
+                                            <br />
+                                            <em>{formatSlotRange(req.start_time, req.end_time)}</em>
+                                            <p>Message: </p>
+                                            {req.message && <p>{req.message}</p>}
+                                        </div>
 
-                                {req.message && <p>{req.message}</p>}
+                                        <div className="request-actions">
+                                            <button onClick={() => handleAcceptRequest(req.id)}>Accept</button>
+                                            <button onClick={() => handleDeclineRequest(req.id)}>Decline</button>
+                                            {req.requester?.email && (
+                                                <button onClick={() => emailOwner(req.requester.email)}>
+                                                    Email
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-
-                            <div className="request-actions">
-                                <button onClick={() => handleAcceptRequest(req.id)}>Accept</button>
-                                <button onClick={() => handleDeclineRequest(req.id)}>Decline</button>
-                                {req.requester?.email && (
-                                    <button onClick={() => emailOwner(req.requester.email)}>
-                                        Email
-                                    </button>
-                                )}
-                            </div>
-                        </div>
                             )}
                         </section>
 
@@ -628,7 +725,13 @@ function Dashboard() {
 
                         {/* SLOT LIST */}
                         <section className="slots-section">
-                            <h3 className="form-header">Your Slots</h3>
+                            <div className="slots-header">
+                                <h3 className="form-header">Your Slots</h3>
+
+                                <button className="delete-all-button" onClick={deleteAllSlots}>
+                                    Delete All Slots
+                                </button>
+                            </div>
                     
                             {slots.length === 0 ? (
                                 <p>You have no slots created yet.</p>
@@ -642,20 +745,23 @@ function Dashboard() {
                                             </div>
 
                                             <div className="slot-actions">
-                                                <label className="visibility-toggle">
-                                                    <span>{slot.isPublic ? "Public" : "Private"}</span>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={slot.isPublic}
-                                                        onChange={() => toggleVisibility(slot.id)}
-                                                    />
-                                                    <span className="toggle-slider" aria-hidden="true"></span>
-                                                </label>
-
+                                                {slot.status==="booked" ? (
+                                                    <span className="booked-label">Booked</span>
+                                                ) : (
+                                                    <label className="visibility-toggle">
+                                                        <span>{slot.status === "active" ? "Public" : "Private"}</span>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={slot.status === "active"}
+                                                            onChange={() => toggleVisibility(slot.id)}
+                                                        />
+                                                        <span className="toggle-slider" aria-hidden="true"></span>
+                                                    </label>
+                                                )}
                                                 <button className="invite-button" type="button" onClick={() => generateInviteURL(slot)}>
                                                     Invite
                                                 </button>
-
+             
                                                 <button className="delete-button" type="button" onClick={() => deleteSlot(slot.id)}>
                                                     Delete
                                                 </button>
