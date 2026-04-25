@@ -15,6 +15,7 @@ from models.booking import (
     Reservation,
     SlotStatus,
     MeetingRequest,
+    GroupMeeting,
     build_mailto,
 )
 from models.users import User, UserRole, UserRead, InviteLinkResponse
@@ -61,7 +62,6 @@ def create_slot(
     return created_slots
 
 
-# Owner: create slot(s) in bulk
 @router.post("/bulk", response_model=list[BookingSlotRead], status_code=201)
 def create_bulk_slots(
     payload: BookingSlotBulkCreate,
@@ -232,19 +232,20 @@ def delete_slot(
     owner: User = Depends(get_owner),
 ):
     slot = _get_owned_slot(slot_id, owner, session)
+    
+    # Pre-fetch booker emails for notification before deletion happens
     statement = (
-        select(Reservation, User)
-        .join(User, Reservation.user_id == User.user_id)
+        select(User.email)
+        .join(Reservation, Reservation.user_id == User.user_id)
         .where(Reservation.slot_id == slot_id)
     )
-    results = session.exec(statement).all()
+    reservation_booker_emails = session.exec(statement).all()
     
 
     mailto = None
-    if results:
-        reservation_booker_emails = [user.email for _, user in results]
+    if reservation_booker_emails:
         mailto = build_mailto(
-            to=",".join(reservation_booker_emails),  # Comma-separated list for the 'To' field
+            to=",".join(reservation_booker_emails),
             subject=f"Cancellation: {slot.title}",
             body=(
                 f"Hello,\n\n"
@@ -255,17 +256,8 @@ def delete_slot(
             ),
         )
 
-    reservations = session.exec(select(Reservation).where(Reservation.slot_id == slot_id)).all()
-    for reservation in reservations:
-        session.delete(reservation)
-
-    linked_requests = session.exec(
-        select(MeetingRequest).where(MeetingRequest.booking_slot_id == slot_id)
-    ).all()
-
-    for req in linked_requests:
-        session.delete(req)
-
+    # Database-level cascades handle reservations, meeting_requests, etc.
+    # GroupMeeting.finalized_slot_id is SET NULL automatically.
     session.delete(slot)
     session.commit()
 
@@ -280,6 +272,7 @@ def get_slot_bookers(
     owner: User = Depends(get_owner),
 ):
     """Owner sees all users who reserved a given slot."""
+    slot = _get_owned_slot(slot_id, owner, session)
     statement = (
         select(User)
         .join(Reservation, Reservation.user_id == User.user_id)
