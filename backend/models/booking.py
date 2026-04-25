@@ -9,9 +9,9 @@ if TYPE_CHECKING:
 
 ### Enums
 class SlotType(str, Enum):
-    REQUEST = "request"
-    GROUP = "group"
-    OFFICE_HOURS = "office_hours"
+    GENERAL_SLOT = "general slot"
+    GROUP = "group meeting"
+    OFFICE_HOURS = "office hours"
 
 
 class SlotStatus(str, Enum):

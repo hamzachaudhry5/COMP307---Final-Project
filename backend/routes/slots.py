@@ -61,6 +61,7 @@ def create_slot(
     return created_slots
 
 
+# Owner: create slot(s) in bulk
 @router.post("/bulk", response_model=list[BookingSlotRead], status_code=201)
 def create_bulk_slots(
     payload: BookingSlotBulkCreate,
@@ -279,7 +280,6 @@ def get_slot_bookers(
     owner: User = Depends(get_owner),
 ):
     """Owner sees all users who reserved a given slot."""
-    slot = _get_owned_slot(slot_id, owner, session)
     statement = (
         select(User)
         .join(Reservation, Reservation.user_id == User.user_id)
