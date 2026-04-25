@@ -44,7 +44,7 @@ class BookingSlot(BookingSlotBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     owner_id: int = Field(foreign_key="user.user_id")
-    status: SlotStatus = SlotStatus.ACTIVE
+    status: SlotStatus = SlotStatus.PRIVATE
     group_meeting_id: Optional[int] = Field(default=None, foreign_key="group_meetings.id")
     created_at: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("America/Toronto")))
 
