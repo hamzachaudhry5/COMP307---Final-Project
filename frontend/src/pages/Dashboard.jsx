@@ -141,7 +141,10 @@ function Dashboard() {
         }
 
         try {
-            const baseDate = new Date(date);
+            // Parse date as local time (not UTC) to avoid timezone day-shift
+            const [year, month, day] = date.split("-").map(Number);
+            const baseDate = new Date(year, month - 1, day);
+
             let daysToUse = [];
             if (mode === "single") {
                 daysToUse = [baseDate.getDay()];
@@ -153,9 +156,10 @@ function Dashboard() {
                 daysToUse = selectedDays;
             }
 
-            const slotsPayload = daysToUse.map(day => {
-                const d = getNextWeekdayDate(baseDate, day);
-                const dateStr = d.toISOString().split("T")[0];
+            const slotsPayload = daysToUse.map(targetDay => {
+                const d = getNextWeekdayDate(baseDate, targetDay);
+                // Format as local date string, not UTC
+                const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
                 return {
                     title: slotTitle,
                     description: description || "",
@@ -176,8 +180,8 @@ function Dashboard() {
                 recurrenceWeeks: 1, maxParticipants: 1, mode: "single", selectedDays: []
             });
         } catch (err) {
-            console.error("Full error:", err.message);  // now prints the actual Pydantic detail
-            alert("Failed to create slot: " + err.message);
+            console.error(err);
+            alert("Failed to create slot");
         }
     }
 
@@ -426,7 +430,7 @@ function Dashboard() {
         const firstDate = start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         const lastDate = new Date(batchSlots[batchSlots.length - 1].start_time)
             .toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        const spanLabel = firstDate === lastDate ? firstDate : `${firstDate} - ${lastDate}`;
+        const spanLabel = firstDate === lastDate ? firstDate : `${firstDate} → ${lastDate}`;
 
         return { daysLabel, timeRange, spanLabel };
     }
@@ -536,7 +540,7 @@ function Dashboard() {
                                         <select name="slotType" value={formData.slotType} onChange={handleInputChange} required>
                                             <option value="" disabled>Select slot type</option>
                                             <option value="general slot">General Slot</option>
-                                            <option value="group">Group Meeting</option>
+                                            <option value="group ">Group Meeting</option>
                                             <option value="office hours">Office Hours</option>
                                         </select>
                                     </label>
@@ -609,10 +613,10 @@ function Dashboard() {
                                                 : {};
 
                                             return (
-                                                <div key={batchKey} className="slot-card">
+                                                <div key={batchKey} className="slot-card" style={{ display: "flex", flexDirection: "column" }}>
                                                     {/* Batch/slot header row */}
-                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
-                                                        <div className="slot-details">
+                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", width: "100%" }}>
+                                                        <div className="slot-details" style={{ alignSelf: "flex-start", flex: 1 }}>
                                                             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                                                                 <h4>{representative.title}</h4>
                                                                 {isBatch && (
@@ -637,7 +641,7 @@ function Dashboard() {
                                                         </div>
 
                                                         {/* Actions */}
-                                                        <div className="slot-actions">
+                                                        <div className="slot-actions" style={{ flexShrink: 0, alignSelf: "flex-start" }}>
                                                             {isBatch ? (
                                                                 <>
                                                                     {batchStatus === "booked" && <span className="booked-label">All Booked</span>}
