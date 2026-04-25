@@ -9,8 +9,18 @@ async function fetchAuth(endpoint, options = {}) {
     ...options,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...options.headers },
   });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "Error");
-  return res.json();
+  
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.detail || "Error");
+  }
+
+  // Handle 204 No Content or empty responses
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return null;
+  }
+
+  return res.json().catch(() => null);
 }
 
 async function fetchPub(endpoint, options = {}) {
@@ -79,6 +89,7 @@ export const groupMeetings = {
   vote: (id, data) => fetchAuth(`/group-meetings/${id}/vote`, { method: "POST", body: JSON.stringify(data) }),
   getHeatmap: (id) => fetchAuth(`/group-meetings/${id}/heatmap`),
   finalize: (id, optionId, weeks = 1) => fetchAuth(`/group-meetings/${id}/finalize?option_id=${optionId}&recurrence_weeks=${weeks}`, { method: "POST" }),
+  delete: (id) => fetchAuth(`/group-meetings/${id}`, { method: "DELETE" }),
 };
 
 export const meetingRequests = {

@@ -290,4 +290,20 @@ def finalize_meeting(
         subject=f"Meeting Finalized: {meeting.title}",
         body=body_text
     )
-   
+
+
+# Owner: delete a group meeting
+@router.delete("/{meeting_id}", status_code=204)
+def delete_group_meeting(
+    meeting_id: int,
+    session: Session = Depends(get_session),
+    owner: User = Depends(get_owner),
+):
+    meeting = session.get(GroupMeeting, meeting_id)
+    if not meeting or meeting.owner_id != owner.user_id:
+        raise HTTPException(404, "Meeting not found")
+    
+    # All associated records (invites, options, votes) will be deleted via DB cascade
+    session.delete(meeting)
+    session.commit()
+    return None

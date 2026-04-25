@@ -4,7 +4,7 @@ import api from "../api/client";
 function GroupMeetings({ isOwner, userId }) {
     const [meetings, setMeetings] = useState([]);
     const [invites, setInvites] = useState([]);
-    const [allUsers, setAllUsers] = useState([]); // Changed from owners to allUsers
+    const [allUsers, setAllUsers] = useState([]);
     
     const [newMeeting, setNewMeeting] = useState({
         title: "",
@@ -26,7 +26,6 @@ function GroupMeetings({ isOwner, userId }) {
                 const mine = await api.groupMeetings.getMine();
                 setMeetings(mine);
                 
-                // Fetch ALL registered users for inviting
                 const users = await api.auth.getUsers();
                 setAllUsers(users);
             }
@@ -84,6 +83,17 @@ function GroupMeetings({ isOwner, userId }) {
                 options: [{ start_time: "", end_time: "", date: "" }],
                 invited_user_ids: []
             });
+            loadData();
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
+    const deleteMeeting = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this group meeting? All votes and invites will be lost.")) return;
+        try {
+            await api.groupMeetings.delete(id);
+            alert("Meeting deleted.");
             loadData();
         } catch (err) {
             alert(err.message);
@@ -181,6 +191,7 @@ function GroupMeetings({ isOwner, userId }) {
                                     {!m.is_finalized && (
                                         <button onClick={() => viewHeatmap(m.id)} className="invite-button">View Heatmap</button>
                                     )}
+                                    <button onClick={() => deleteMeeting(m.id)} className="delete-button">Delete</button>
                                 </div>
                             </div>
                         ))}
