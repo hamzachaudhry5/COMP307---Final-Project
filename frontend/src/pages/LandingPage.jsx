@@ -2,10 +2,18 @@ import { BsCalendar2CheckFill } from 'react-icons/bs';
 import { BsFillPeopleFill } from "react-icons/bs";
 import { BsCalendar2RangeFill } from "react-icons/bs";
 import { FaClock } from 'react-icons/fa';
-
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function LandingPage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    await logout();
+    navigate("/login");
+  }
+
   return (
     <div>
       <header className="navbar">
@@ -14,8 +22,19 @@ function LandingPage() {
 
           <nav>
             <Link to="/">Home</Link>
-            <Link to="/login">Login</Link>
-            <Link to="/register">Register</Link>
+            {user ? (
+              <>
+                <Link to="/dashboard">Dashboard</Link>
+                <button className="logout-button" onClick={handleLogout}>
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login">Login</Link>
+                <Link to="/register">Register</Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
@@ -31,8 +50,8 @@ function LandingPage() {
             </p>
 
             <div>
-              <Link className="submit-button hero-cta" to="/register">
-                Get Started
+              <Link className="submit-button hero-cta" to={user ? "/dashboard" : "/register"}>
+                {user ? "Go to Dashboard" : "Get Started"}
               </Link>
             </div>
           </div>

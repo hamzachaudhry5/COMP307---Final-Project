@@ -26,6 +26,8 @@ function Dashboard() {
 
     const [appointments, setAppointments] = useState([])    
     const [pendingRequests, setPendingRequests] = useState([]);
+    const [sentRequests, setSentRequests] = useState([]);
+    const [owners, setOwners] = useState([]);
     const [requestData, setRequestData] = useState({
         date: "",
         startTime: "",
@@ -35,6 +37,12 @@ function Dashboard() {
     const [weekOffset, setWeekOffset] = useState(0);
     const weekDays = getWeekDays(weekOffset);
     const weekLabel = getWeekRange(weekDays);
+
+    useEffect(() => {
+        if (!isLoading && !user) {
+            navigate("/login");
+        }
+    }, [user, isLoading, navigate]);
 
     /* Private slots */
     const visibleOwnerSlots = isOwner
@@ -345,8 +353,8 @@ function Dashboard() {
         }
     }
 
-    function handleLogout(){
-        logout();
+    async function handleLogout(){
+        await logout();
         navigate("/login");
     }
 

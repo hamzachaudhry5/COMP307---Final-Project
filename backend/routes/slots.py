@@ -295,7 +295,7 @@ def get_slot_bookers(
 def get_slots_by_invite(
     token: str,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_user),  # must be logged in
+    current_user: User = Depends(get_current_user),
 ):
     """
     Resolves an invite URL token. Returns the owner's active slots.
@@ -306,6 +306,9 @@ def get_slots_by_invite(
     ).first()
     if not owner:
         raise HTTPException(404, "Invalid or expired invite link")
+
+    if owner.user_id == current_user.user_id:
+        raise HTTPException(400, "You cannot book your own slots via invite link")
 
     return session.exec(
         select(BookingSlot)
@@ -319,11 +322,15 @@ def get_slots_by_invite(
 @router.get("/owners", response_model=list[UserRead])
 def list_owners(
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    """Returns all active owners."""
+    """Returns all active owners except the current user."""
     return session.exec(
-        select(User).where(User.role == UserRole.owner, User.is_active == True)
+        select(User).where(
+            User.role == UserRole.owner, 
+            User.is_active == True,
+            User.user_id != current_user.user_id
+        )
     ).all()
 
 
@@ -331,10 +338,14 @@ def list_owners(
 @router.get("/owners/with-active-slots", response_model=list[UserRead])
 def list_owners_with_active_slots(
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     owners = session.exec(
-        select(User).where(User.role == UserRole.owner, User.is_active == True)
+        select(User).where(
+            User.role == UserRole.owner, 
+            User.is_active == True,
+            User.user_id != current_user.user_id
+        )
     ).all()
     return [
         owner
@@ -353,8 +364,11 @@ def list_owners_with_active_slots(
 def get_owner_active_slots(
     owner_id: int,
     session: Session = Depends(get_session),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
+    if owner_id == current_user.user_id:
+        raise HTTPException(400, "You cannot book your own slots")
+
     owner = session.get(User, owner_id)
     if not owner or owner.role != UserRole.owner:
         raise HTTPException(404, "Owner not found")
