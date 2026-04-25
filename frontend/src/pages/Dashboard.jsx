@@ -13,20 +13,19 @@ function Dashboard() {
     const [formData, setFormData] = useState({
         slotTitle: "",
         description: "",
-        slotType: "",
+        slotType: "general slot",
         date: "",
         startTime: "",
         endTime: "",
         isRecurring: false,
         recurrenceWeeks: 1,
         maxParticipants: 1,
-
         mode: "single",
         selectedDays: []
     });
 
     const [appointments, setAppointments] = useState([])    
-    const [ownerReservations, setOwnerReservations] = useState([]); // Track bookers
+    const [ownerReservations, setOwnerReservations] = useState([]); 
     const [pendingRequests, setPendingRequests] = useState([]);
     const [sentRequests, setSentRequests] = useState([]);
     const [owners, setOwners] = useState([]);
@@ -40,13 +39,15 @@ function Dashboard() {
     const weekDays = getWeekDays(weekOffset);
     const weekLabel = getWeekRange(weekDays);
 
+    // Track which slots have their booker dropdown open
+    const [expandedSlots, setExpandedSlots] = useState(new Set());
+
     useEffect(() => {
         if (!isLoading && !user) {
             navigate("/login");
         }
     }, [user, isLoading, navigate]);
 
-    /* Private slots */
     const visibleOwnerSlots = isOwner
         ? slots.filter(slot =>
             slot.status === "active" || slot.status === "booked"
@@ -122,20 +123,7 @@ function Dashboard() {
 
     async function createSlot(e) {
         e.preventDefault();
-
-        const { 
-            slotTitle, 
-            description, 
-            slotType,
-            date, 
-            startTime, 
-            endTime,
-            isRecurring,
-            recurrenceWeeks,
-            maxParticipants,
-            mode,
-            selectedDays 
-        } = formData;
+        const { slotTitle, description, slotType, date, startTime, endTime, isRecurring, recurrenceWeeks, maxParticipants, mode, selectedDays } = formData;
         if (!slotTitle || !date || !startTime || !endTime || !slotType) {
             alert("Please fill in all fields.");
             return;
@@ -148,7 +136,6 @@ function Dashboard() {
         try {
             const baseDate = new Date(date);
             let daysToUse = [];
-
             if (mode === "single"){
                 daysToUse = [baseDate.getDay()];
             } else {
@@ -172,24 +159,9 @@ function Dashboard() {
                     max_participants: Number(maxParticipants)
                 };
             });
-
             const newSlots = await api.slots.createBulk({ slots: slotsPayload });
             setSlots(prev => [...prev, ...newSlots]);
-
-            setFormData({
-                slotTitle: "",
-                description: "",
-                slotType: "",
-                date: "",
-                startTime: "",
-                endTime: "",
-                isRecurring: false,
-                recurrenceWeeks: 1,
-                maxParticipants: 1,
-                mode: "single",
-                selectedDays: []
-            });
-
+            setFormData({ slotTitle: "", description: "", slotType: "general slot", date: "", startTime: "", endTime: "", isRecurring: false, recurrenceWeeks: 1, maxParticipants: 1, mode: "single", selectedDays: [] });
         } catch (err) {
             console.error(err);
             alert("Failed to create slot");
@@ -199,19 +171,14 @@ function Dashboard() {
     async function deleteSlot(slotId) {
         const confirmed = window.confirm("Delete this slot?");
         if (!confirmed) return;
-
         try {
+            const slotToDelete = slots.find(s => s.id === slotId);
             const response = await api.slots.delete(slotId);
             setSlots(prev => prev.filter(slot => slot.id !== slotId));
-            setAppointments(prev =>
-                prev.filter(r =>
-                    Number(r.slot?.id) !== Number(slotId) &&
-                    Number(r.slot_id) !== Number(slotId)
-                )
-            );
-
-            if (response?.mailto) {
-                openMailClient(response.mailto);
+            setAppointments(prev => prev.filter(r => Number(r.slot?.id) !== Number(slotId) && Number(r.slot_id) !== Number(slotId)));
+            if (response?.mailto) openMailClient(response.mailto);
+            if (slotToDelete?.slot_type === "group meeting" || slotToDelete?.group_meeting_id) {
+                window.location.reload(); 
             }
         } catch (err) {
             console.error(err);
@@ -222,20 +189,12 @@ function Dashboard() {
     async function deleteAllSlots() {
         const confirmed = window.confirm("Delete ALL your slots? This cannot be undone.");
         if (!confirmed) return;
-
         try {
             for (const slot of slots) {
                 await api.slots.delete(slot.id);
             }
             setSlots([]);
-            setAppointments(prev =>
-                prev.filter(r =>
-                    !slots.some(slot =>
-                        Number(r.slot?.id) === Number(slot.id) ||
-                        Number(r.slot_id) === Number(slot.id)
-                    )
-                )
-            );
+            setAppointments(prev => prev.filter(r => !slots.some(slot => Number(r.slot?.id) === Number(slot.id) || Number(r.slot_id) === Number(slot.id))));
         } catch (err) {
             console.error(err);
             alert("Failed to delete all slots");
@@ -245,13 +204,10 @@ function Dashboard() {
     async function cancelReservation(reservationId) {
         const confirmed = window.confirm("Cancel this reservation?");
         if (!confirmed) return;
-
         try {
             const response = await api.reservations.cancel(reservationId);
             setAppointments(prev => prev.filter(r => r.id !== reservationId));
-            if (response?.mailto) {
-                openMailClient(response.mailto);
-            }
+            if (response?.mailto) openMailClient(response.mailto);
         } catch (err) {
             console.error(err);
             alert("Failed to cancel reservation");
@@ -262,9 +218,7 @@ function Dashboard() {
          try {
             const res = await api.slots.createInviteLink();
             let inviteURL = res.invite_url;
-            if (inviteURL.startsWith("/")) {
-                inviteURL = `http://localhost:3000${inviteURL}`;
-            }
+            if (inviteURL.startsWith("/")) inviteURL = `http://localhost:3000${inviteURL}`;
             await navigator.clipboard.writeText(inviteURL);
             alert("Invite URL copied:\n" + inviteURL);
         } catch (err) {
@@ -276,21 +230,11 @@ function Dashboard() {
     async function toggleVisibility(slotId) {
         const slot = slots.find(s => Number(s.id) === Number(slotId));
         if (!slot) return;
-
         const targetStatus = slot.status === "active" ? "private" : "active";
-        // Optimistic UI
         setSlots(prev => prev.map(s => Number(s.id) === Number(slotId) ? { ...s, status: targetStatus } : s));
-
         try {
-            const updatedSlot = targetStatus === "private"
-                ? await api.slots.deactivate(slotId)
-                : await api.slots.activate(slotId);
-
-            setSlots(prevSlots =>
-                prevSlots.map(s =>
-                    Number(s.id) === Number(slotId) ? updatedSlot : s
-                )
-            );
+            const updatedSlot = targetStatus === "private" ? await api.slots.deactivate(slotId) : await api.slots.activate(slotId);
+            setSlots(prevSlots => prevSlots.map(s => Number(s.id) === Number(slotId) ? updatedSlot : s));
         } catch (err) {
             console.error(err);
             setSlots(prev => prev.map(s => Number(s.id) === Number(slotId) ? slot : s));
@@ -302,18 +246,13 @@ function Dashboard() {
         try {
             const response = await api.meetingRequests.accept(requestId);
             setPendingRequests(prev => prev.filter(r => r.id !== requestId));
-
             const myReservations = await api.reservations.getMy();
             setAppointments(myReservations);
-
             if (isOwner) {
                 const mySlots = await api.slots.getMine();
                 setSlots(mySlots);
             }
-
-            if (response?.mailto) {
-                openMailClient(response.mailto);
-            }
+            if (response?.mailto) openMailClient(response.mailto);
         } catch (err) {
             console.error(err);
             alert("Failed to accept request");
@@ -351,19 +290,18 @@ function Dashboard() {
         }
     }
 
-    function emailOwner(email) {
-        window.location.href = `mailto:${email}`;
+    function toggleSlotExpansion(slotId) {
+        setExpandedSlots(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(slotId)) newSet.delete(slotId);
+            else newSet.add(slotId);
+            return newSet;
+        });
     }
 
     function openMailClient(response) {
-        if (typeof response === "string") {
-            window.location.href = response;
-            return;
-        }
-        if (response?.mailto || response?.url || response?.href) {
-            window.location.href = response.mailto || response.url || response.href;
-            return;
-        }
+        if (typeof response === "string") { window.location.href = response; return; }
+        if (response?.mailto || response?.url || response?.href) { window.location.href = response.mailto || response.url || response.href; return; }
         if (response?.to) {
             const mailtoURL = `mailto:${response.to}?subject=${encodeURIComponent(response.subject || "")}&body=${encodeURIComponent(response.body || "")}`;
             window.location.href = mailtoURL;
@@ -391,11 +329,7 @@ function Dashboard() {
 
     function isSameDay(dateStr, day) {
         const d = new Date(dateStr);
-        return (
-            d.getFullYear() === day.getFullYear() &&
-            d.getMonth() === day.getMonth() &&
-            d.getDate() === day.getDate()
-        );
+        return (d.getFullYear() === day.getFullYear() && d.getMonth() === day.getMonth() && d.getDate() === day.getDate());
     }
 
     function formatSlotRange(startTime, endTime) {
@@ -497,7 +431,7 @@ function Dashboard() {
                                         <div className="request-actions">
                                             <button onClick={() => handleAcceptRequest(req.id)}>Accept</button>
                                             <button onClick={() => handleDeclineRequest(req.id)}>Decline</button>
-                                            {req.requester?.email && <button onClick={() => emailOwner(req.requester.email)}>Email</button>}
+                                            {req.requester?.email && <button onClick={() => openMailClient({to: req.requester.email})}>Email</button>}
                                         </div>
                                     </div>
                                 ))}
@@ -566,31 +500,69 @@ function Dashboard() {
                             {slots.length === 0 ? <p>You have no slots created yet.</p> : (
                                 <div className="slots-list">
                                     {[...slots].sort((a,b) => new Date(a.start_time) - new Date(b.start_time)).map((slot) => {
-                                        const booker = ownerReservations.find(r => Number(r.slot_id) === Number(slot.id));
+                                        const bookers = ownerReservations.filter(r => Number(r.slot_id) === Number(slot.id));
+                                        const isExpanded = expandedSlots.has(slot.id);
                                         return (
-                                            <div key={slot.id} className="slot-card">
-                                                <div className="slot-details">
-                                                    <h4>{slot.title}</h4>
-                                                    <p>{formatSlotRange(slot.start_time, slot.end_time)}</p>
-                                                    <p>Type: {slot.slot_type}</p>
-                                                    {booker && (
-                                                        <div style={{ marginTop: '8px', padding: '10px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
-                                                            <strong>Booked by:</strong> {booker.user?.first_name} {booker.user?.last_name} ({booker.user?.email})
-                                                            <button className="secondary-button" style={{ padding: '4px 8px', fontSize: '0.8rem', marginLeft: '10px' }} onClick={() => emailOwner(booker.user?.email)}>Email Student</button>
+                                            <div key={slot.id} className="slot-card" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div className="slot-details">
+                                                        <h4>{slot.title}</h4>
+                                                        <p>{formatSlotRange(slot.start_time, slot.end_time)}</p>
+                                                        
+                                                        <div className="capacity-info">
+                                                            <p className={`capacity-text ${bookers.length > 0 ? 'has-bookings' : ''}`}>
+                                                                {bookers.length} / {slot.max_participants || 1} reserved
+                                                            </p>
+                                                            {bookers.length > 0 && (
+                                                                <button 
+                                                                    className="toggle-bookers-btn"
+                                                                    onClick={() => toggleSlotExpansion(slot.id)}
+                                                                >
+                                                                    {isExpanded ? "Hide Details" : "Show Details"}
+                                                                </button>
+                                                            )}
                                                         </div>
-                                                    )}
+                                                    </div>
+                                                    <div className="slot-actions">
+                                                        {slot.status === "booked" ? <span className="booked-label">Full</span> : (
+                                                            <label className="visibility-toggle">
+                                                                <span>{slot.status === "active" ? "Public" : "Private"}</span>
+                                                                <input type="checkbox" checked={slot.status === "active"} onChange={() => toggleVisibility(slot.id)} />
+                                                                <span className="toggle-slider"></span>
+                                                            </label>
+                                                        )}
+                                                        <button className="invite-button" onClick={() => generateInviteURL(slot)}>Invite</button>
+                                                        <button className="delete-button" onClick={() => deleteSlot(slot.id)}>Delete</button>
+                                                    </div>
                                                 </div>
-                                                <div className="slot-actions">
-                                                    {slot.status === "booked" ? <span className="booked-label">Booked</span> : (
-                                                        <label className="visibility-toggle">
-                                                            <span>{slot.status === "active" ? "Public" : "Private"}</span>
-                                                            <input type="checkbox" checked={slot.status === "active"} onChange={() => toggleVisibility(slot.id)} />
-                                                            <span className="toggle-slider"></span>
-                                                        </label>
-                                                    )}
-                                                    <button className="invite-button" onClick={() => generateInviteURL(slot)}>Invite</button>
-                                                    <button className="delete-button" onClick={() => deleteSlot(slot.id)}>Delete</button>
-                                                </div>
+
+                                                {isExpanded && bookers.length > 0 && (
+                                                    <div className="bookers-dropdown">
+                                                        <div className="bookers-header">
+                                                            <strong style={{ fontSize: '0.95rem' }}>Confirmed Participants:</strong>
+                                                            <button 
+                                                                className="secondary-button" 
+                                                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                                                                onClick={() => openMailClient({ to: bookers.map(b => b.user?.email).join(",") })}
+                                                            >
+                                                                Email All
+                                                            </button>
+                                                        </div>
+                                                        <ul className="bookers-list">
+                                                            {bookers.map(b => (
+                                                                <li key={b.id} className="booker-item">
+                                                                    <span className="booker-name">{b.user?.first_name} {b.user?.last_name} ({b.user?.email})</span>
+                                                                    <button 
+                                                                        className="email-individual-link"
+                                                                        onClick={() => openMailClient({ to: b.user?.email })}
+                                                                    >
+                                                                        Email
+                                                                    </button>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
                                             </div>
                                         );
                                     })}
