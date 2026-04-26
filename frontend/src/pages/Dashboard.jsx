@@ -122,7 +122,10 @@ function Dashboard() {
             const response = await api.meetingRequests.accept(requestId);
             setPendingRequests(prev => prev.filter(r => r.id !== requestId));
             setAppointments(await api.reservations.getMy());
-            if (isOwner) setSlots(await api.slots.getMine());
+            if (isOwner) {
+                setSlots(await api.slots.getMine());
+                setOwnerReservations(await api.reservations.getOwnerAll()); 
+            }
             if (response?.mailto) openMailClient(response.mailto);
         } catch (err) { alert("Failed to accept request"); }
     }
