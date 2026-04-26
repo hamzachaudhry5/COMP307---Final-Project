@@ -521,7 +521,7 @@ button {
   border-radius: 12px;
   font-size: 1rem;
   width: fit-content;
-  margin-bottom: 16px;
+  /* margin-bottom: 16px; */
 }
 
 .secondary-button {

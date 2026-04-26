@@ -12,10 +12,10 @@ function LoginPage() {
     const [error, setError] = useState("");
 
     useEffect(() => {
-        if (user) {
-            navigate("/dashboard");
-        }
-    }, [user, navigate]);
+        if (!user) return;
+        const redirectTo = location.state?.from || "/dashboard";
+        navigate(redirectTo);
+    }, [user, navigate, location.state]);
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -30,7 +30,9 @@ function LoginPage() {
         //backend response
         try {
             await login(email, password);
-            navigate("/dashboard");
+
+            // const redirectTo = location.state?.from || "/dashboard";
+            // navigate(redirectTo);
 
         } catch (err) {
             setError(err.message);

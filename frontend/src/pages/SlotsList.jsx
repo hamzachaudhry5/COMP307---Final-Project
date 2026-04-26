@@ -49,7 +49,11 @@ function SlotsList({ slots, ownerReservations, onDelete, onDeleteBatch, onDelete
         <section className="slots-section">
             <div className="slots-header">
                 <h3 className="form-header">Your Slots</h3>
-                <button className="delete-all-button" onClick={onDeleteAll}>Delete All Slots</button>
+                <div className="slot-actions" style={{ flexShrink: 0, alignSelf: "flex-start" }}>
+                    <button className="invite-button" onClick={onGenerateInvite}>Invite</button>
+                    <button className="delete-all-button" onClick={onDeleteAll}>Delete All Slots</button>
+                </div>
+                
             </div>
 
             {slots.length === 0 ? (
@@ -111,7 +115,6 @@ function SlotsList({ slots, ownerReservations, onDelete, onDeleteBatch, onDelete
                                                         </button>
                                                     </>
                                                 )}
-                                                <button className="invite-button" onClick={onGenerateInvite}>Invite</button>
                                                 <button className="delete-button" onClick={() => onDeleteBatch(rep.batch_id)}>Delete All</button>
                                                 <button className="secondary-button" onClick={() => toggleExpand(batchKey)} aria-expanded={isExpanded}>
                                                     {isExpanded ? "Collapse ▲" : "Expand ▼"}
