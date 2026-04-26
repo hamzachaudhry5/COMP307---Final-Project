@@ -775,3 +775,31 @@ button {
     opacity: 0.8;
     margin-top: 2px;
 }
+
+/* SLOT FOLDER */
+.folder-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 0;
+    color: black;
+    font-size: 1.5rem;
+}
+
+.arrow {
+    display: inline-block;
+    transition: transform 0.2s ease;
+}
+
+.arrow.open {
+    transform: rotate(90deg);
+}
+
+.folder {
+    margin-bottom: 12px;
+    border-radius: 8px;
+}
