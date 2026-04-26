@@ -248,7 +248,10 @@ function Dashboard() {
         try {
             const res = await api.slots.createInviteLink();
             let inviteURL = res.invite_url;
-            if (inviteURL.startsWith("/")) inviteURL = `http://localhost:3000${inviteURL}`;
+            if (inviteURL.startsWith("/")) {
+                const frontendBase = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+                inviteURL = `${frontendBase}${inviteURL}`;
+            }
             await navigator.clipboard.writeText(inviteURL);
             alert("Invite URL copied:\n" + inviteURL);
         } catch (err) {
