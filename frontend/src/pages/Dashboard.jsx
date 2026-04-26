@@ -499,6 +499,40 @@ function Dashboard() {
                         </div>
                         <button className="submit-button" onClick={() => navigate("/booking")}>Book Appointment</button>
                     </section>
+                    
+                    {/* Appointments list — users only */}
+                    {!isOwner && (
+                        <section className="slots-section">
+                            <h3 className="form-header">Your Appointments</h3>
+                            {appointments.length === 0 ? <p>You have no upcoming appointments.</p> : (
+                                <div className="slots-list">
+                                    {[...appointments]
+                                        .sort((a, b) => new Date(a.slot?.start_time) - new Date(b.slot?.start_time))
+                                        .map(reservation => {
+                                            const slot = reservation.slot;
+                                            if (!slot) return null;
+                                            return (
+                                                <div key={reservation.id} className="slot-card" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <div className="slot-details">
+                                                            <h4>{slot.title}</h4>
+                                                            <p>{formatSlotRange(slot.start_time, slot.end_time)}</p>
+                                                            <p>Type: {slot.slot_type}</p>
+                                                            {slot.description && <p>{slot.description}</p>}
+                                                        </div>
+                                                        <div className="slot-actions">
+                                                            <button className="delete-button" onClick={() => cancelReservation(reservation.id)}>
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                </div>
+                            )}
+                        </section>
+                    )}
 
                     {isOwner && (
                         <>
@@ -528,6 +562,7 @@ function Dashboard() {
                                     </div>
                                 )}
                             </section>
+                            
 
                             {/* Create slot form */}
                             <section className="dashboard-section">
