@@ -459,8 +459,6 @@ function Dashboard() {
                 <div className="container">
                     <h2 className="dash-header">Welcome, {user?.first_name}</h2>
 
-                    <GroupMeetings isOwner={isOwner} userId={user?.user_id} />
-
                     {/* Calendar section */}
                     <section className="dashboard-section">
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
@@ -526,6 +524,8 @@ function Dashboard() {
                         <button className="submit-button" onClick={() => navigate("/booking")}>Book Appointment</button>
                     </section>
                     
+                    
+
                     {/* Appointments list — users only */}
                     {!isOwner && (
                         <section className="slots-section">
@@ -589,67 +589,6 @@ function Dashboard() {
                                 )}
                             </section>
                             
-
-                            {/* Create slot form */}
-                            <section className="dashboard-section">
-                                <h3 className="form-header">Create a slot</h3>
-                                <form className="slot-form" onSubmit={createSlot}>
-                                    <label>Slot Title:
-                                        <input type="text" name="slotTitle" value={formData.slotTitle} onChange={handleInputChange} required />
-                                    </label>
-                                    <label>Slot Type:
-                                        <select name="slotType" value={formData.slotType} onChange={handleInputChange} required>
-                                            <option value="" disabled>Select slot type</option>
-                                            <option value="general slot">General Slot</option>
-                                            <option value="group ">Group Meeting</option>
-                                            <option value="office hours">Office Hours</option>
-                                        </select>
-                                    </label>
-                                    <label>Start Date:
-                                        <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
-                                    </label>
-                                    <label>Single Day / Multiple Days
-                                        <select name="mode" value={formData.mode} onChange={handleInputChange}>
-                                            <option value="single">Single Day</option>
-                                            <option value="multiple">Multiple Days</option>
-                                        </select>
-                                    </label>
-                                    {formData.mode === "multiple" && (
-                                        <div className="weekday-section">
-                                            <label className="weekday-title">Select Days:</label>
-                                            <div className="weekday-grid">
-                                                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label, idx) => (
-                                                    <label key={idx} className="weekday-pill">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={formData.selectedDays.includes(idx)}
-                                                            onChange={() => {
-                                                                setFormData(prev => ({
-                                                                    ...prev,
-                                                                    selectedDays: prev.selectedDays.includes(idx)
-                                                                        ? prev.selectedDays.filter(d => d !== idx)
-                                                                        : [...prev.selectedDays, idx]
-                                                                }));
-                                                            }}
-                                                        />
-                                                        <span>{label}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    <label>Start Time: <input type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required /></label>
-                                    <label>End Time: <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required /></label>
-                                    <label>Max Participants: <input type="number" name="maxParticipants" value={formData.maxParticipants} min="1" onChange={handleInputChange} /></label>
-                                    <label>Recurring <input type="checkbox" name="isRecurring" checked={formData.isRecurring} onChange={handleInputChange} /></label>
-                                    {formData.isRecurring && (
-                                        <label>Repeat (weeks): <input type="number" name="recurrenceWeeks" value={formData.recurrenceWeeks} min="1" onChange={handleInputChange} /></label>
-                                    )}
-                                    <label>Description <textarea className="description-textarea" name="description" value={formData.description} onChange={handleInputChange} rows={3} /></label>
-                                    <button className="submit-button" type="submit">Create Slot</button>
-                                </form>
-                            </section>
-
                             {/* Slots list with batch grouping */}
                             <section className="slots-section">
                                 <div className="slots-header">
@@ -835,6 +774,68 @@ function Dashboard() {
                                         })}
                                     </div>
                                 )}
+                            </section>
+
+                            <GroupMeetings isOwner={isOwner} userId={user?.user_id} />
+
+                            {/* Create slot form */}
+                            <section className="dashboard-section">
+                                <h3 className="form-header">Create a slot</h3>
+                                <form className="slot-form" onSubmit={createSlot}>
+                                    <label>Slot Title:
+                                        <input type="text" name="slotTitle" value={formData.slotTitle} onChange={handleInputChange} required />
+                                    </label>
+                                    <label>Slot Type:
+                                        <select name="slotType" value={formData.slotType} onChange={handleInputChange} required>
+                                            <option value="" disabled>Select slot type</option>
+                                            <option value="general slot">General Slot</option>
+                                            <option value="group ">Group Meeting</option>
+                                            <option value="office hours">Office Hours</option>
+                                        </select>
+                                    </label>
+                                    <label>Start Date:
+                                        <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
+                                    </label>
+                                    <label>Single Day / Multiple Days
+                                        <select name="mode" value={formData.mode} onChange={handleInputChange}>
+                                            <option value="single">Single Day</option>
+                                            <option value="multiple">Multiple Days</option>
+                                        </select>
+                                    </label>
+                                    {formData.mode === "multiple" && (
+                                        <div className="weekday-section">
+                                            <label className="weekday-title">Select Days:</label>
+                                            <div className="weekday-grid">
+                                                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label, idx) => (
+                                                    <label key={idx} className="weekday-pill">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.selectedDays.includes(idx)}
+                                                            onChange={() => {
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    selectedDays: prev.selectedDays.includes(idx)
+                                                                        ? prev.selectedDays.filter(d => d !== idx)
+                                                                        : [...prev.selectedDays, idx]
+                                                                }));
+                                                            }}
+                                                        />
+                                                        <span>{label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <label>Start Time: <input type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required /></label>
+                                    <label>End Time: <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required /></label>
+                                    <label>Max Participants: <input type="number" name="maxParticipants" value={formData.maxParticipants} min="1" onChange={handleInputChange} /></label>
+                                    <label>Recurring <input type="checkbox" name="isRecurring" checked={formData.isRecurring} onChange={handleInputChange} /></label>
+                                    {formData.isRecurring && (
+                                        <label>Repeat (weeks): <input type="number" name="recurrenceWeeks" value={formData.recurrenceWeeks} min="1" onChange={handleInputChange} /></label>
+                                    )}
+                                    <label>Description <textarea className="description-textarea" name="description" value={formData.description} onChange={handleInputChange} rows={3} /></label>
+                                    <button className="submit-button" type="submit">Create Slot</button>
+                                </form>
                             </section>
                         </>
                     )}
