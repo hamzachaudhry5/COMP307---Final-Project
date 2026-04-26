@@ -26,6 +26,9 @@ function Dashboard() {
     const [ownerReservations, setOwnerReservations] = useState([]);
     const [pendingRequests, setPendingRequests] = useState([]);
 
+    const [showCreateSlot, setShowCreateSlot] = useState(false);
+const [showGroupMeeting, setShowGroupMeeting] = useState(false);
+
     useEffect(() => {
         if (!isLoading && !user) navigate("/login");
     }, [user, isLoading, navigate]);
@@ -247,10 +250,46 @@ function Dashboard() {
                                 onGenerateInvite={handleGenerateInvite}
                                 onEmail={emailUser}
                             />
+                            <div className="dashboard-section">
+                                <div className="folder">
+                                    <button
+                                        className="folder-button"
+                                        onClick={() => {
+                                            setShowCreateSlot(prev => !prev);
+                                            // setShowGroupMeeting(false);
+                                        }}
+                                    >
+                                        <span className={`arrow ${showCreateSlot ? "open" : ""}`}>▶ </span>
+                                        Create Slot
+                                    </button>
 
-                            <GroupMeetings isOwner={isOwner} userId={user?.user_id} />
-
-                            <CreateSlotForm onSlotsCreated={newSlots => setSlots(prev => [...prev, ...newSlots])} />
+                                    <div className={`folder-content ${showCreateSlot ? "open" : ""}`}>
+                                        {showCreateSlot && (
+                                            <CreateSlotForm onSlotsCreated={newSlots => setSlots(prev => [...prev, ...newSlots])} />
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="folder">
+                                    <button
+                                        className="folder-button"
+                                        onClick={() => {
+                                            setShowGroupMeeting(prev => !prev);
+                                            // setShowCreateSlot(false);
+                                        }}
+                                    >
+                                        <span className={`arrow ${showGroupMeeting ? "open" : ""}`}>▶ </span>   
+                                        Create Group Meeting
+                                    </button>
+                                    <div className={`folder-content ${showGroupMeeting ? "open" : ""}`}>
+                                        {showGroupMeeting && (
+                                            <GroupMeetings isOwner={isOwner} userId={user?.user_id} />
+                                        )}
+                                    </div>
+                                </div>
+                        
+                            </div>
+                            
+                            
                         </>
                     )}
                 </div>
