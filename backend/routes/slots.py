@@ -15,7 +15,6 @@ from models.booking import (
     MailtoResponse,
     Reservation,
     SlotStatus,
-    MeetingRequest,
     GroupMeeting,
     build_mailto,
 )

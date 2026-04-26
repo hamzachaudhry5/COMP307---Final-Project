@@ -465,8 +465,8 @@ button {
 }
 
 .calendar-slot {
-  background: #a6192e;
-  color: white;
+  background: #e5e7eb;
+  color: black;
   border-radius: 8px;
   padding: 6px 8px;
   margin-bottom: 6px;
@@ -762,4 +762,16 @@ button {
     border-radius: 8px;
     font-weight: bold;
     font-size: 0.85rem;
+}
+
+.calendar-slot--has-bookings {
+    background-color: #a6192e;
+    color: white;
+}
+
+.slot-capacity {
+    font-size: 0.7rem;
+    color: inherit;
+    opacity: 0.8;
+    margin-top: 2px;
 }

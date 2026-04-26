@@ -475,6 +475,20 @@ function Dashboard() {
                             <h3 className="week-title">{weekLabel}</h3>
                             <button onClick={() => setWeekOffset(prev => prev + 1)}>&gt;</button>
                         </div>
+
+                        {isOwner && (
+                            <div style={{ display: "flex", gap: "16px", marginBottom: "8px", fontSize: "0.8rem", color: "#6b7280" }}>
+                                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#e5e7eb", display: "inline-block" }}></span>
+                                    No bookings yet
+                                </span>
+                                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                    <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#a6192e", display: "inline-block" }}></span>
+                                    Has bookings
+                                </span>
+                            </div>
+                        )}
+
                         <div className="week-grid">
                             {weekDays.map((day, i) => (
                                 <div key={i} className="week-day">
@@ -483,16 +497,25 @@ function Dashboard() {
                                         <div className="week-day-number">{day.getDate()}</div>
                                     </div>
                                     <div className="week-day-slots">
-                                        {calendarItems.filter(item => isSameDay(item.start_time, day)).map(item => (
-                                            <div key={item.id} className="calendar-slot">
-                                                <div className="slot-time">
-                                                    {new Date(item.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                                    {" - "}
-                                                    {new Date(item.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                        {calendarItems.filter(item => isSameDay(item.start_time, day)).map(item => {
+                                            const hasReservations = isOwner && ownerReservations.some(r => Number(r.slot_id) === Number(item.id));
+                                            const bookerCount = isOwner ? ownerReservations.filter(r => Number(r.slot_id) === Number(item.id)).length : 0;
+                                            return (
+                                                <div key={item.id} className={`calendar-slot ${isOwner && hasReservations ? 'calendar-slot--has-bookings' : ''}`}>
+                                                    <div className="slot-time">
+                                                        {new Date(item.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                        {" - "}
+                                                        {new Date(item.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                    </div>
+                                                    <div className="slot-title">{item.title}</div>
+                                                    {isOwner && (
+                                                        <div className="slot-capacity">
+                                                            {bookerCount} / {item.max_participants || 1} booked
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="slot-title">{item.title}</div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                         {calendarItems.filter(item => isSameDay(item.start_time, day)).length === 0 && (
                                             <div className="week-day-empty">No Events</div>
                                         )}
