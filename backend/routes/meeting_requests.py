@@ -101,7 +101,7 @@ def accept_request(
 ):
     req = _get_owned_request(request_id, owner, session)
     
-    # Create a BOOKED slot for the agreed time
+    # Create a full slot for the agreed time
     slot = BookingSlot(
         owner_id=owner.user_id,
         slot_type=SlotType.GENERAL_SLOT,

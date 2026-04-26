@@ -27,7 +27,7 @@ def export_ical(
     Exports all confirmed appointments as a .ics file.
     Works for both roles:
     - Users: their reserved slots
-    - Owners: their owned slots (active + booked)
+    - Owners: their owned slots (active + full)
     Import into Google Calendar or Outlook via File → Import.
     """
     cal = Calendar()
