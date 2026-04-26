@@ -333,7 +333,7 @@ function Booking() {
                                     {calendarItems
                                         .filter(item => isSameDay(item.start_time, day))
                                         .map(item => (
-                                            <div key={item.id} className="calendar-slot">
+                                            <div key={item.id} className="calendar-slot calendar-slot--has-bookings">
                                                 <div className="slot-time">
                                                     {new Date(item.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     {" - "}

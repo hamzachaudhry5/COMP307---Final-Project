@@ -449,7 +449,7 @@ function Dashboard() {
                     <h1 className="title">BookSOCS</h1>
                     <nav>
                         <Link to="/">Home</Link>
-                        <Link to="/booking">Booking</Link>
+                        {!isOwner && <Link to="/booking">Booking</Link>}
                         <button className="logout-button" onClick={handleLogout}>Logout</button>
                     </nav>
                 </div>
@@ -497,9 +497,10 @@ function Dashboard() {
                                     <div className="week-day-slots">
                                         {calendarItems.filter(item => isSameDay(item.start_time, day)).map(item => {
                                             const hasReservations = isOwner && ownerReservations.some(r => Number(r.slot_id) === Number(item.id));
+                                            const slotIsRed = !isOwner || hasReservations;
                                             const bookerCount = isOwner ? ownerReservations.filter(r => Number(r.slot_id) === Number(item.id)).length : 0;
                                             return (
-                                                <div key={item.id} className={`calendar-slot ${isOwner && hasReservations ? 'calendar-slot--has-bookings' : ''}`}>
+                                                <div key={item.id} className={`calendar-slot ${slotIsRed ? 'calendar-slot--has-bookings' : ''}`}>
                                                     <div className="slot-time">
                                                         {new Date(item.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                                         {" - "}
