@@ -5,12 +5,14 @@ import api from "../api/client";
 import WeekCalendar from "./WeekCalendar";
 import GroupMeetingInvites from "./GroupMeetingInvites";
 import MeetingRequestForm from "./MeetingRequestForm";
+import { buildOwnerMap, resolveOwnerName } from "../utils/owners";
 
 function Booking() {
     const navigate = useNavigate();
     const { user, logout, isLoading } = useAuth();
     const location = useLocation();
     const { token } = useParams();
+    const isOwner = user?.role === "owner"; 
 
     const [owners, setOwners] = useState([]);
     const [selectedOwnerId, setSelectedOwnerId] = useState("");
@@ -70,6 +72,12 @@ function Booking() {
         }
         loadInviteSlots();
     }, [token, user, isLoading, navigate, location.pathname]);
+
+    const ownerMap = buildOwnerMap(owners, user, isOwner);
+    const calendarItemsWithOwners = calendarItems.map(item => ({
+        ...item,
+        ownerName: resolveOwnerName(ownerMap, item.owner_id)
+    }));
 
     async function handleOwnerChange(e) {
         const ownerId = e.target.value;
@@ -131,7 +139,7 @@ function Booking() {
 
             <main className="dashboard-page">
                 <WeekCalendar
-                    calendarItems={calendarItems}
+                    calendarItems={calendarItemsWithOwners}
                     ownerReservations={[]}
                     isOwner={false}
                     onExport={null}

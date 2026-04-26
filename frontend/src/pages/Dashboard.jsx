@@ -7,6 +7,7 @@ import WeekCalendar from "./WeekCalendar";
 import PendingRequests from "./PendingRequests";
 import CreateSlotForm from "./CreateSlotForm";
 import SlotsList from "./SlotsList";
+import { buildOwnerMap, resolveOwnerName } from "../utils/owners";
 
 function formatSlotRange(startTime, endTime) {
     const start = new Date(startTime);
@@ -26,8 +27,10 @@ function Dashboard() {
     const [ownerReservations, setOwnerReservations] = useState([]);
     const [pendingRequests, setPendingRequests] = useState([]);
 
+    const [owners, setOwners] = useState([]);
+
     const [showCreateSlot, setShowCreateSlot] = useState(false);
-const [showGroupMeeting, setShowGroupMeeting] = useState(false);
+    const [showGroupMeeting, setShowGroupMeeting] = useState(false);
 
     useEffect(() => {
         if (!isLoading && !user) navigate("/login");
@@ -43,6 +46,8 @@ const [showGroupMeeting, setShowGroupMeeting] = useState(false);
                 try { setSlots(await api.slots.getMine()); } catch (err) { console.error(err); }
                 try { setOwnerReservations(await api.reservations.getOwnerAll()); } catch (err) { console.error(err); }
             }
+
+            try { setOwners(await api.slots.getOwners()); } catch (err) { console.error(err);}
         }
         loadData();
     }, [isLoading, user, isOwner]);
@@ -53,6 +58,12 @@ const [showGroupMeeting, setShowGroupMeeting] = useState(false);
         : [];
     const appointmentSlots = appointments.map(r => r.slot || r).filter(Boolean);
     const calendarItems = [...appointmentSlots, ...visibleOwnerSlots];
+
+    const ownerMap = buildOwnerMap(owners, user, isOwner);
+    const calendarItemsWithOwners = calendarItems.map(item => ({
+        ...item,
+        ownerName: resolveOwnerName(ownerMap, item.owner_id)
+    }));
 
     // --- Handlers ---
 
@@ -172,7 +183,7 @@ const [showGroupMeeting, setShowGroupMeeting] = useState(false);
                     <h1 className="title">BookSOCS</h1>
                     <nav>
                         <Link to="/">Home</Link>
-                        {!isOwner && <Link to="/booking">Booking</Link>}
+                        <Link to="/booking">Booking</Link>
                         <button className="logout-button" onClick={async () => { await logout(); navigate("/login"); }}>
                             Logout
                         </button>
@@ -185,7 +196,7 @@ const [showGroupMeeting, setShowGroupMeeting] = useState(false);
                     <h2 className="dash-header">Welcome, {user?.first_name}</h2>
 
                     <WeekCalendar
-                        calendarItems={calendarItems}
+                        calendarItems={calendarItemsWithOwners}
                         ownerReservations={ownerReservations}
                         isOwner={isOwner}
                         onExport={handleExportCalendar}
