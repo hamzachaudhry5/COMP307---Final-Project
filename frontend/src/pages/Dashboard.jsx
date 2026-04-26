@@ -48,7 +48,7 @@ function Dashboard() {
     }, [user, isLoading, navigate]);
 
     const visibleOwnerSlots = isOwner
-        ? slots.filter(slot => slot.status === "active" || slot.status === "booked")
+        ? slots.filter(slot => slot.status === "active" || slot.status === "full")
         : [];
 
     const appointmentSlots = appointments
@@ -604,9 +604,9 @@ function Dashboard() {
 
                                             const allActive = batchSlots.every(s => s.status === "active");
                                             const allPrivate = batchSlots.every(s => s.status === "private");
-                                            const allBooked = batchSlots.every(s => s.status === "booked");
-                                            const hasBooked = batchSlots.some(s => s.status === "booked");
-                                            const batchStatus = allActive ? "active" : allPrivate ? "private" : allBooked ? "booked" : "mixed";
+                                            const allFull = batchSlots.every(s => s.status === "full");
+                                            const hasFull = batchSlots.some(s => s.status === "full");
+                                            const batchStatus = allActive ? "active" : allPrivate ? "private" : allFull ? "full" : "mixed";
 
                                             const { daysLabel, timeRange, spanLabel } = isBatch
                                                 ? getBatchSummary(batchSlots)
@@ -644,9 +644,9 @@ function Dashboard() {
                                                         <div className="slot-actions" style={{ flexShrink: 0, alignSelf: "flex-start" }}>
                                                             {isBatch ? (
                                                                 <>
-                                                                    {batchStatus === "booked" && <span className="booked-label">All Booked</span>}
+                                                                    {batchStatus === "full" && <span className="booked-label">All Full</span>}
 
-                                                                    {!hasBooked && (
+                                                                    {!hasFull && (
                                                                         <>
                                                                             <button
                                                                                 className="secondary-button"
@@ -675,8 +675,8 @@ function Dashboard() {
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    {representative.status === "booked" ? (
-                                                                        <span className="booked-label">Booked</span>
+                                                                    {representative.status === "full" ? (
+                                                                        <span className="booked-label">Full</span>
                                                                     ) : (
                                                                         <label className="visibility-toggle">
                                                                             <span>{representative.status === "active" ? "Public" : "Private"}</span>
@@ -744,8 +744,8 @@ function Dashboard() {
                                                                             )}
                                                                         </div>
                                                                         <div className="slot-actions">
-                                                                            {slot.status === "booked" ? (
-                                                                                <span className="booked-label">Booked</span>
+                                                                            {slot.status === "full" ? (
+                                                                                <span className="booked-label">Full</span>
                                                                             ) : (
                                                                                 <label className="visibility-toggle">
                                                                                     <span>{slot.status === "active" ? "Public" : "Private"}</span>

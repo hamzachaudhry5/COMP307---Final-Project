@@ -48,7 +48,6 @@ def dashboard(
             .join(Reservation, Reservation.slot_id == BookingSlot.id)
             .where(
                 BookingSlot.owner_id == user.user_id,
-                BookingSlot.status != SlotStatus.CANCELLED,
             )
             .distinct()
             .order_by(BookingSlot.start_time)

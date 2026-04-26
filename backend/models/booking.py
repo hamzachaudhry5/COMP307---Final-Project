@@ -18,8 +18,7 @@ class SlotType(str, Enum):
 class SlotStatus(str, Enum):
     PRIVATE = "private"
     ACTIVE = "active"
-    BOOKED = "booked"
-    CANCELLED = "cancelled"
+    FULL = "full"
 
 
 class RequestStatus(str, Enum):

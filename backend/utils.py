@@ -5,7 +5,7 @@ from models.booking import BookingSlot, SlotStatus, Reservation
 def check_slot_overlap(owner_id: int, start_time, end_time, session: Session, current_slot_id: int = None):
     statement = select(BookingSlot).where(
         BookingSlot.owner_id == owner_id,
-        BookingSlot.status.in_([SlotStatus.ACTIVE, SlotStatus.BOOKED]),
+        BookingSlot.status.in_([SlotStatus.ACTIVE, SlotStatus.FULL]),
         BookingSlot.start_time < end_time,
         BookingSlot.end_time > start_time,
     )

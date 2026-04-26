@@ -101,11 +101,11 @@ def accept_request(
 ):
     req = _get_owned_request(request_id, owner, session)
     
-    # Create a BOOKED slot for the agreed time
+    # Create a full slot for the agreed time
     slot = BookingSlot(
         owner_id=owner.user_id,
         slot_type=SlotType.GENERAL_SLOT,
-        status=SlotStatus.BOOKED,
+        status=SlotStatus.FULL,
         title=f"Meeting with {session.get(User, req.requester_id).first_name}",
         start_time=req.start_time,
         end_time=req.end_time

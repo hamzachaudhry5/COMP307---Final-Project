@@ -194,7 +194,7 @@ def deactivate_batch(batch_id: str, session: Session = Depends(get_session), own
         raise HTTPException(404, "Batch not found")
     
     for slot in slots:
-        if slot.status == SlotStatus.BOOKED:
+        if slot.status == SlotStatus.FULL:
             raise HTTPException(400, f"Slot '{slot.title}' on {slot.start_time.strftime('%B %d at %H:%M')} has reservations. Delete the batch instead to notify bookers.")
         elif slot.status == SlotStatus.ACTIVE:
             has_reservations = session.exec(
