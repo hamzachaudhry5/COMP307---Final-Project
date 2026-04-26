@@ -82,6 +82,7 @@ function WeekCalendar({ calendarItems, ownerReservations, isOwner, onExport, onB
                                                 {new Date(item.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                             </div>
                                             <div className="slot-title">{item.title}</div>
+                                            <div className="slot-owner"><strong>Owner:</strong><br></br> {item.ownerName}</div>
                                             {isOwner && (
                                                 <div className="slot-capacity">
                                                     {bookerCount} / {item.max_participants || 1} booked
@@ -99,9 +100,9 @@ function WeekCalendar({ calendarItems, ownerReservations, isOwner, onExport, onB
                 })}
             </div>
 
-            {!isOwner && (
-                <button className="submit-button" onClick={onBook}>Book Appointment</button>
-            )}
+            
+            <button className="submit-button" onClick={onBook}>Book Appointment</button>
+            
         </section>
     );
 }
