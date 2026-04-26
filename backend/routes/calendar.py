@@ -57,7 +57,7 @@ def export_ical(
             select(BookingSlot).where(
                 BookingSlot.owner_id == user.user_id,
                 or_(
-                    BookingSlot.status == SlotStatus.BOOKED,
+                    BookingSlot.status == SlotStatus.FULL,
                     BookingSlot.id.in_(owned_confirmed_ids),
                 ),
             )

@@ -57,7 +57,7 @@ def reserve_slot(
     check_reservation_overlap(user_id=user.user_id, start_time=slot.start_time, end_time=slot.end_time, session=session)
     
     if slot.max_participants is not None and current_reservations_count + 1 >= slot.max_participants:
-        slot.status = SlotStatus.BOOKED
+        slot.status = SlotStatus.FULL
 
     reservation = Reservation(slot_id=slot_id, user_id=user.user_id)
     session.add(reservation)
@@ -100,11 +100,10 @@ def cancel_reservation(
         )
     ).one()
 
-    if slot.status != SlotStatus.CANCELLED:
-        if slot.max_participants is None:
-            slot.status = SlotStatus.ACTIVE
-        else:
-            slot.status = SlotStatus.BOOKED if remaining >= slot.max_participants else SlotStatus.ACTIVE
+    if slot.max_participants is None:
+        slot.status = SlotStatus.ACTIVE
+    else:
+        slot.status = SlotStatus.FULL if remaining >= slot.max_participants else SlotStatus.ACTIVE
     
     session.delete(reservation)
     session.commit()

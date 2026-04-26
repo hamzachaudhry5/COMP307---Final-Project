@@ -249,7 +249,7 @@ def finalize_meeting(
         slot = BookingSlot(
             owner_id=owner.user_id,
             slot_type=SlotType.GROUP,
-            status=SlotStatus.BOOKED,
+            status=SlotStatus.FULL,
             title=meeting.title,
             description=meeting.description,
             start_time=option.start_time + delta,
