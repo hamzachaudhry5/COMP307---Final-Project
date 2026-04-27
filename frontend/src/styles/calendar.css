@@ -87,14 +87,17 @@
 }
 
 .slot-capacity {
-    font-size: 0.7rem;
-    color: inherit;
-    opacity: 0.8;
-    margin-top: 2px;
+  font-size: 0.7rem;
+  color: inherit;
+  opacity: 0.8;
+  margin-top: 2px;
 }
 
-
 /* MONTH GRID */
+.month-calendar {
+  width: 100%;
+}
+
 .month-grid{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -106,4 +109,71 @@
 }
 .muted-day{
   opacity: 0.35;
+}
+
+@media (max-width: 768px) {
+
+  .booking-layout {
+    flex-direction: column;
+  }
+
+  .sidebar,
+  .booking-main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .month-calendar {
+    overflow-x: clip;
+    padding-bottom: 8px;
+  }
+
+  .week-nav {
+    gap: 12px;
+  }
+
+  .week-day-empty {
+    font-size: 0.7rem;
+  }
+
+  .week-grid.month-header,
+  .week-grid.month-grid {
+    grid-template-columns: repeat(7, minmax(30px, 1fr));
+  }
+  
+  .week-grid:not(.month-header):not(.month-grid) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .week-day {
+    min-height: 120px;
+    padding: 8px;
+  }
+
+  .week-day-empty {
+    display: none;
+  }
+
+  .week-day-slots {
+    gap: 4px;
+  }
+
+  .month-day {
+    min-height: 85px;
+  }
+
+  .month-grid .calendar-slot {
+    padding: 4px 2px;
+    font-size: 0.6rem;
+  }
+
+  .month-grid .slot-time {
+    font-size: 0.6rem;
+  }
+
+  .month-grid .slot-title,
+  .month-grid .slot-capacity,
+  .month-grid .slot-owner {
+    display: none;
+  }
 }

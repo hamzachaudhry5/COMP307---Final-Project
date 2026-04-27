@@ -162,158 +162,158 @@
 }
 
 .search-container {
-    position: relative;
-    width: 100%;
+  position: relative;
+  width: 100%;
 }
 
 .search-container input {
-    width: 100%;
-    padding: 12px 16px;
-    border: 1px solid #cbd5e1;
-    border-radius: 10px;
-    font-size: 0.95rem;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.95rem;
 }
 
 .user-search-results {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    margin-top: 5px;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 100;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-top: 5px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
 .search-result-item {
-    padding: 10px 16px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    border-bottom: 1px solid #f1f5f9;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .search-result-item:last-child {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 .search-result-item:hover {
-    background-color: #f8fafc;
-    color: #a6192e;
+  background-color: #f8fafc;
+  color: #a6192e;
 }
 
 .search-result-item.no-results {
-    color: #64748b;
-    cursor: default;
+  color: #64748b;
+  cursor: default;
 }
 
 .user-pill.invited {
-    background-color: #f1f5f9;
-    color: #1e293b;
-    border: 1px solid #e2e8f0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
+  background-color: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
 }
 
 .remove-user-btn {
-    background: none;
-    color: #94a3b8;
-    padding: 0;
-    font-size: 1.2rem;
-    line-height: 1;
-    cursor: pointer;
+  background: none;
+  color: #94a3b8;
+  padding: 0;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .remove-user-btn:hover {
-    color: #a6192e;
+  color: #a6192e;
 }
 
 .user-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .user-pill {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #f1f5f9;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
 }
 
 /* Heatmap */
 .heatmap-container {
-    margin-top: 20px;
+  margin-top: 20px;
 }
 
 .heatmap-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 12px;
-    margin: 20px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
 }
 
 .heatmap-cell {
-    padding: 15px;
-    border-radius: 10px;
-    border: 1px solid #e5e7eb;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    transition: transform 0.2s;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: transform 0.2s;
 }
 
 .heatmap-cell:hover {
-    transform: scale(1.02);
-    border-color: #a6192e;
+  transform: scale(1.02);
+  border-color: #a6192e;
 }
 
 .heatmap-cell strong {
-    font-size: 0.9rem;
+  font-size: 0.9rem;
 }
 
 .heatmap-cell span {
-    font-size: 0.8rem;
-    font-weight: bold;
+  font-size: 0.8rem;
+  font-weight: bold;
 }
 
 /* SLOT FOLDER */
 .folder-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: none;
-    border: none;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 8px 0;
-    color: black;
-    font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 0;
+  color: black;
+  font-size: 1.5rem;
 }
 
 .arrow {
-    display: inline-block;
-    transition: transform 0.2s ease;
+  display: inline-block;
+  transition: transform 0.2s ease;
 }
 
 .arrow.open {
-    transform: rotate(90deg);
+  transform: rotate(90deg);
 }
 
 .folder {
-    margin-bottom: 12px;
-    border-radius: 8px;
+  margin-bottom: 12px;
+  border-radius: 8px;
 }
 
 .folder-content {
@@ -352,14 +352,12 @@
 .delete-all-button {
   display: flex;
   align-items: center;
-  margin-left: auto;
   background-color: #4e4e4e;
   color: #ffffff;
   padding: 14px 16px;
   border-radius: 12px;
   font-size: 1rem;
   width: fit-content;
-  /* margin-bottom: 16px; */
 }
 
 .owner-select {
@@ -374,4 +372,23 @@
 .owner-name {
   color: #a6192e;
   font-weight: 600;
+}
+
+@media (max-width: 768px) {
+
+  .book-button {
+    align-self: center;
+    display: flex !important;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .secondary-button {
+    background-color: #4b5563;
+    color: white;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    width: fit-content;
+  }
 }
