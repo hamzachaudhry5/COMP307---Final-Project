@@ -216,6 +216,7 @@ function Dashboard() {
                     {!isOwner && (
                         <BookingsList
                             appointments={appointments}
+                            owners={owners} 
                             onCancel={handleCancelReservation}
                         />
                     )}
