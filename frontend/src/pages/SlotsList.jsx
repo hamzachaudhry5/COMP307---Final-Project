@@ -23,70 +23,93 @@ function getBatchSummary(batchSlots) {
     return { daysLabel, timeRange, spanLabel };
 }
 
-// Renders booker list with individual + "Email All" actions
+// Per-slot booker panel: searchable, scrollable, individual emails only
 function BookerEmailPanel({ bookers, onEmail }) {
-    const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const [showList, setShowList] = useState(false);
+
     if (!bookers || bookers.length === 0) return null;
+
+    const filtered = bookers.filter(b => {
+        const name = `${b.user?.first_name ?? ""} ${b.user?.last_name ?? ""} ${b.user?.email ?? ""}`.toLowerCase();
+        return name.includes(search.toLowerCase());
+    });
 
     const allEmails = bookers.map(b => b.user?.email).filter(Boolean).join(",");
 
     return (
         <div style={{ marginTop: "6px" }}>
+            {/* Top action row */}
             <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
                 <span style={{ fontSize: "0.8rem", color: "#374151", fontWeight: 500 }}>
                     {bookers.length === 1
-                        ? `Booked by ${bookers[0].user?.first_name} ${bookers[0].user?.last_name}`
+                        ? `${bookers[0].user?.first_name} ${bookers[0].user?.last_name}`
                         : `${bookers.length} bookers`}
                 </span>
-                {bookers.length === 1 ? (
+
+                <button
+                    className="secondary-button"
+                    style={{ padding: "2px 8px", fontSize: "0.75rem" }}
+                    onClick={() => onEmail(allEmails)}
+                >
+                    {bookers.length === 1 ? "Email" : "Email All"}
+                </button>
+
+                {bookers.length > 1 && (
                     <button
                         className="secondary-button"
                         style={{ padding: "2px 8px", fontSize: "0.75rem" }}
-                        onClick={() => onEmail(bookers[0].user?.email)}
+                        onClick={() => setShowList(o => !o)}
                     >
-                        Email
+                        {showList ? "Hide ▲" : "Select ▼"}
                     </button>
-                ) : (
-                    <>
-                        <button
-                            className="secondary-button"
-                            style={{ padding: "2px 8px", fontSize: "0.75rem" }}
-                            onClick={() => onEmail(allEmails)}
-                        >
-                            Email All
-                        </button>
-                        <button
-                            className="secondary-button"
-                            style={{ padding: "2px 8px", fontSize: "0.75rem" }}
-                            onClick={() => setOpen(o => !o)}
-                        >
-                            {open ? "Hide ▲" : "Select ▼"}
-                        </button>
-                    </>
                 )}
             </div>
 
-            {/* Dropdown list of individual bookers */}
-            {open && bookers.length > 1 && (
-                <div style={{
-                    marginTop: "6px", background: "#f3f4f6", borderRadius: "8px",
-                    padding: "8px", display: "flex", flexDirection: "column", gap: "4px"
-                }}>
-                    {bookers.map((b, i) => (
-                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem" }}>
-                            <span style={{ color: "#374151" }}>
-                                {b.user?.first_name} {b.user?.last_name}
-                                <span style={{ color: "#9ca3af", marginLeft: "6px" }}>({b.user?.email})</span>
-                            </span>
-                            <button
-                                className="secondary-button"
-                                style={{ padding: "2px 8px", fontSize: "0.75rem", marginLeft: "8px" }}
-                                onClick={() => onEmail(b.user?.email)}
-                            >
-                                Email
-                            </button>
-                        </div>
-                    ))}
+            {/* Expandable list — search bar always present when multiple bookers */}
+            {showList && bookers.length > 1 && (
+                <div style={{ marginTop: "6px" }}>
+                    <input
+                        type="text"
+                        placeholder="Search by name or email…"
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{
+                            width: "100%", padding: "4px 8px", fontSize: "0.78rem",
+                            border: "1px solid #d1d5db", borderRadius: "6px",
+                            marginBottom: "4px", boxSizing: "border-box"
+                        }}
+                    />
+                    <div style={{
+                        maxHeight: "108px",
+                        overflowY: "auto",
+                        display: "flex", flexDirection: "column", gap: "3px",
+                    }}>
+                        {filtered.length === 0 ? (
+                            <p style={{ fontSize: "0.78rem", color: "#9ca3af", margin: 0 }}>No matches</p>
+                        ) : (
+                            filtered.map((b, i) => (
+                                <div key={i} style={{
+                                    display: "flex", justifyContent: "space-between",
+                                    alignItems: "center", gap: "8px",
+                                    background: "#f3f4f6", borderRadius: "6px",
+                                    padding: "4px 8px", fontSize: "0.78rem"
+                                }}>
+                                    <span style={{ color: "#374151", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        <strong>{b.user?.first_name} {b.user?.last_name}</strong>
+                                        <span style={{ color: "#9ca3af", marginLeft: "6px" }}>{b.user?.email}</span>
+                                    </span>
+                                    <button
+                                        className="secondary-button"
+                                        style={{ padding: "2px 8px", fontSize: "0.75rem", flexShrink: 0 }}
+                                        onClick={() => onEmail(b.user?.email)}
+                                    >
+                                        Email
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             )}
         </div>
@@ -115,14 +138,8 @@ function SlotsList({ slots, ownerReservations, onDelete, onDeleteBatch, onDelete
         });
     }
 
-    // All bookers for a given slot id (fixes find → filter)
     function getBookers(slotId) {
         return ownerReservations.filter(r => Number(r.slot_id) === Number(slotId));
-    }
-
-    // All bookers across every slot in a batch (for batch-level summary)
-    function getBatchBookers(batchSlots) {
-        return batchSlots.flatMap(slot => getBookers(slot.id));
     }
 
     return (
@@ -149,17 +166,14 @@ function SlotsList({ slots, ownerReservations, onDelete, onDeleteBatch, onDelete
 
                         const { daysLabel, timeRange, spanLabel } = isBatch ? getBatchSummary(batchSlots) : {};
 
-                        // --- Solo slot bookers (fixes issue 1 & 2) ---
+                        // Solo slot bookers only (no batch-level email panel)
                         const soloBookers = !isBatch ? getBookers(rep.id) : [];
-
-                        // --- Batch-level bookers for "Email All" across whole batch ---
-                        const batchBookers = isBatch ? getBatchBookers(batchSlots) : [];
 
                         return (
                             <div key={batchKey} className="slot-card" style={{ display: "flex", flexDirection: "column" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", width: "100%" }}>
                                     {/* Left: details */}
-                                    <div className="slot-details" style={{ alignSelf: "flex-start", flex: 1 }}>
+                                    <div className="slot-details" style={{ alignSelf: "flex-start", flex: 1, minWidth: 0 }}>
                                         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                                             <h4>{rep.title}</h4>
                                             {isBatch && (
@@ -176,15 +190,12 @@ function SlotsList({ slots, ownerReservations, onDelete, onDeleteBatch, onDelete
                                                     {timeRange}
                                                 </p>
                                                 <p style={{ margin: "2px 0", fontSize: "0.85rem", color: "#6b7280" }}>{spanLabel}</p>
-                                                {/* Batch-level booker email panel */}
-                                                {batchBookers.length > 0 && (
-                                                    <BookerEmailPanel bookers={batchBookers} onEmail={onEmail} />
-                                                )}
+                                                {/* No email panel at batch level — only in expanded individual slots */}
                                             </>
                                         ) : (
                                             <>
                                                 <p>{formatSlotRange(rep.start_time, rep.end_time)}</p>
-                                                {/* Solo slot booker email panel — fixes issue 1 */}
+                                                {/* Solo slot booker panel */}
                                                 <BookerEmailPanel bookers={soloBookers} onEmail={onEmail} />
                                             </>
                                         )}
@@ -232,28 +243,30 @@ function SlotsList({ slots, ownerReservations, onDelete, onDeleteBatch, onDelete
                                 {isBatch && isExpanded && (
                                     <div style={{ marginTop: "12px", borderTop: "1px solid #e5e7eb", paddingTop: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
                                         {batchSlots.map(slot => {
-                                            const slotBookers = getBookers(slot.id); // filter, not find
+                                            const slotBookers = getBookers(slot.id);
                                             return (
-                                                <div key={slot.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "10px 12px", background: "#f9fafb", borderRadius: "8px", gap: "12px" }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <p style={{ margin: 0, fontWeight: 500 }}>{formatSlotRange(slot.start_time, slot.end_time)}</p>
-                                                        <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#6b7280" }}>
-                                                            Status: <span style={{ textTransform: "capitalize", fontWeight: 500 }}>{slot.status}</span>
-                                                        </p>
-                                                        {/* Per-slot booker panel inside expanded batch */}
-                                                        <BookerEmailPanel bookers={slotBookers} onEmail={onEmail} />
-                                                    </div>
-                                                    <div className="slot-actions">
-                                                        {slot.status === "full" ? (
-                                                            <span className="booked-label">Full</span>
-                                                        ) : (
-                                                            <label className="visibility-toggle">
-                                                                <span>{slot.status === "active" ? "Public" : "Private"}</span>
-                                                                <input type="checkbox" checked={slot.status === "active"} onChange={() => onToggleVisibility(slot.id)} />
-                                                                <span className="toggle-slider" />
-                                                            </label>
-                                                        )}
-                                                        <button className="delete-button" onClick={() => onDelete(slot.id)}>Delete</button>
+                                                <div key={slot.id} style={{ padding: "10px 12px", background: "#f9fafb", borderRadius: "8px" }}>
+                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <p style={{ margin: 0, fontWeight: 500 }}>{formatSlotRange(slot.start_time, slot.end_time)}</p>
+                                                            <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#6b7280" }}>
+                                                                Status: <span style={{ textTransform: "capitalize", fontWeight: 500 }}>{slot.status}</span>
+                                                            </p>
+                                                            {/* Per-slot booker panel inside expanded batch */}
+                                                            <BookerEmailPanel bookers={slotBookers} onEmail={onEmail} />
+                                                        </div>
+                                                        <div className="slot-actions" style={{ flexShrink: 0 }}>
+                                                            {slot.status === "full" ? (
+                                                                <span className="booked-label">Full</span>
+                                                            ) : (
+                                                                <label className="visibility-toggle">
+                                                                    <span>{slot.status === "active" ? "Public" : "Private"}</span>
+                                                                    <input type="checkbox" checked={slot.status === "active"} onChange={() => onToggleVisibility(slot.id)} />
+                                                                    <span className="toggle-slider" />
+                                                                </label>
+                                                            )}
+                                                            <button className="delete-button" onClick={() => onDelete(slot.id)}>Delete</button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );
