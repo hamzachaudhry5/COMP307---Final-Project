@@ -131,7 +131,6 @@ function SlotsList({ slots, ownerReservations, onDelete, onDeleteBatch, onDelete
                                                         <span className="toggle-slider" />
                                                     </label>
                                                 )}
-                                                <button className="invite-button" onClick={onGenerateInvite}>Invite</button>
                                                 <button className="delete-button" onClick={() => onDelete(rep.id)}>Delete</button>
                                             </>
                                         )}
