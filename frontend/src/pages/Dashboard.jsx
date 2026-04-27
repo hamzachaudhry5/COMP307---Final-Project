@@ -125,7 +125,7 @@ function Dashboard() {
         try {
             const res = await api.slots.createInviteLink();
             let url = res.invite_url;
-            if (url.startsWith("/")) url = `${import.meta.env.VITE_FRONTEND_URL || window.location.origin}${url}`;
+            if (url.startsWith("/")) url = `${import.meta.env.VITE_FRONTEND_URL}${url}`;
             await navigator.clipboard.writeText(url);
             alert("Invite URL copied:\n" + url);
         } catch (err) { alert("Failed to generate invite link"); }
