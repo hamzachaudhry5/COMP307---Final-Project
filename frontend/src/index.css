@@ -336,6 +336,8 @@ button {
   user-select: none;
   font-size: 13px;
 
+  min-width: 100px;
+
   transition: 0.15s;
 }
 
@@ -802,4 +804,66 @@ button {
 .folder {
     margin-bottom: 12px;
     border-radius: 8px;
+}
+
+
+
+/* BOOKING */
+.booking-layout {
+  display: flex;
+  width: 100%;
+}
+.sidebar{
+  width: 25%;
+  min-width: 280px;
+  border-right: 1px solid #cbd5e1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.booking-main{
+  width: 75%;
+  padding: 16px;
+}
+.folder-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+.folder-content.open {
+  max-height: 100%;
+}
+
+
+/* MONTH GRID */
+.month-grid{
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+}
+.month-day{
+  min-height: 100px;
+  border-radius: 0%;
+}
+.muted-day{
+  opacity: 0.35;
+}
+
+/* SLOT CREATE FORM */
+.slot-select{
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #cbd5e1;
+  margin-top: 8px;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  font-weight: 600;
 }
