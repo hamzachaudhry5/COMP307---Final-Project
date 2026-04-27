@@ -101,7 +101,7 @@ function WeekCalendar({ calendarItems, ownerReservations, isOwner, onExport, onB
             </div>
 
             
-            <button className="submit-button" onClick={onBook}>Book Appointment</button>
+            <button className="book-button" onClick={onBook}>Book Appointment</button>
             
         </section>
     );

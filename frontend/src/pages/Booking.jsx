@@ -159,7 +159,7 @@ function Booking() {
                     </label>
 
                     {selectedOwnerId && (
-                        <button className="secondary-button" style={{ marginLeft: "10px" }}
+                        <button className="secondary-button"
                             onClick={() => {
                                 const owner = owners.find(o => String(o.user_id) === String(selectedOwnerId));
                                 if (owner) window.location.href = `mailto:${owner.email}`;

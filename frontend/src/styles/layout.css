@@ -30,7 +30,7 @@
   width: 100%;
 }
 
-.sidebar{
+.sidebar {
   width: 25%;
   min-width: 280px;
   border-right: 1px solid #cbd5e1;
@@ -42,7 +42,12 @@
 
 .booking-main{
   width: 75%;
+  min-width: 0;
   padding: 16px;
+}
+
+.booking-email-button {
+  margin-left: 10px;
 }
 
 .logout-button {
@@ -218,4 +223,85 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+}
+
+@media (max-width: 768px) {
+
+  .dash-header {
+    padding: 5px;
+  }
+
+  .dashboard-page {
+    overflow: hidden;
+    padding: 2px;
+  }
+
+  .nav-content {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  /* Landing Page */
+
+  .hero-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-card {
+    padding: 18px;
+  }
+
+  .hero-text {
+    text-align: center;
+  }
+
+  .dashboard-section {
+    margin-top: 18px;
+    margin-bottom: 18px;
+    padding: 18px;
+    border-radius: 12px;
+  }
+
+  .dash-header {
+    margin-top: 8px;
+    margin-bottom: 18px;
+    font-size: 1.45rem;
+  }
+
+  /* Slots List */
+
+  .slot-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 3px;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .slot-details h3,
+  .slot-details h4,
+  .slot-details p {
+    display: block;
+    margin: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .slot-card {
+    overflow: hidden;
+  }
+
+  .slot-actions, .slot-actions button {
+    display: inline-flex;
+    flex-direction: column;
+    flex-shrink: 1;
+  }
+
+  .invite-button,
+  .delete-all-button {
+    display: flex;
+    flex-direction: row;
+  }
 }
