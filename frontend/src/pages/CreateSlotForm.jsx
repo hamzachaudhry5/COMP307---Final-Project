@@ -88,10 +88,9 @@ function CreateSlotForm({ onSlotsCreated }) {
                     <input type="text" name="slotTitle" value={formData.slotTitle} onChange={handleInputChange} required />
                 </label>
                 <label>Slot Type:
-                    <select name="slotType" value={formData.slotType} onChange={handleInputChange} required>
+                    <select className="slot-select" name="slotType" value={formData.slotType} onChange={handleInputChange} required>
                         <option value="" disabled>Select slot type</option>
                         <option value="general slot">General Slot</option>
-                        <option value="group meeting">Group Meeting</option>
                         <option value="office hours">Office Hours</option>
                     </select>
                 </label>
@@ -99,7 +98,7 @@ function CreateSlotForm({ onSlotsCreated }) {
                     <input type="date" name="date" value={formData.date} onChange={handleInputChange} required />
                 </label>
                 <label>Single Day / Multiple Days
-                    <select name="mode" value={formData.mode} onChange={handleInputChange}>
+                    <select className="slot-select" name="mode" value={formData.mode} onChange={handleInputChange}>
                         <option value="single">Single Day</option>
                         <option value="multiple">Multiple Days</option>
                     </select>
@@ -108,7 +107,7 @@ function CreateSlotForm({ onSlotsCreated }) {
                     <div className="weekday-section">
                         <label className="weekday-title">Select Days:</label>
                         <div className="weekday-grid">
-                            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label, idx) => (
+                            {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((label, idx) => (
                                 <label key={idx} className="weekday-pill">
                                     <input
                                         type="checkbox"
@@ -129,7 +128,14 @@ function CreateSlotForm({ onSlotsCreated }) {
                 <label>Start Time: <input type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required /></label>
                 <label>End Time: <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required /></label>
                 <label>Max Participants: <input type="number" name="maxParticipants" value={formData.maxParticipants} min="1" onChange={handleInputChange} /></label>
-                <label>Recurring <input type="checkbox" name="isRecurring" checked={formData.isRecurring} onChange={handleInputChange} /></label>
+                <div className="toggle-row">
+                    <span className="toggle-label">Recurring</span>
+                    <label className="visibility-toggle">
+                        <input type="checkbox" name="isRecurring" checked={formData.isRecurring} onChange={handleInputChange} />
+                        <span className="toggle-slider"/>
+                    </label>
+                </div>
+                
                 {formData.isRecurring && (
                     <label>Repeat (weeks): <input type="number" name="recurrenceWeeks" value={formData.recurrenceWeeks} min="1" onChange={handleInputChange} /></label>
                 )}

@@ -6,6 +6,7 @@ import WeekCalendar from "./WeekCalendar";
 import GroupMeetingInvites from "./GroupMeetingInvites";
 import MeetingRequestForm from "./MeetingRequestForm";
 import { buildOwnerMap, resolveOwnerName } from "../utils/owners";
+import MonthCalendar from "./MonthCalendar";
 
 function Booking() {
     const navigate = useNavigate();
@@ -22,6 +23,8 @@ function Booking() {
     const [bookingSlotId, setBookingSlotId] = useState(null);
     const [pageLoading, setPageLoading] = useState(false);
     const [error, setError] = useState("");
+
+    const [showRequest, setShowRequest] = useState(false);
 
     const calendarItems = appointments.map(r => r.slot).filter(Boolean);
 
@@ -137,77 +140,90 @@ function Booking() {
                 </div>
             </header>
 
-            <main className="dashboard-page">
-                <WeekCalendar
-                    calendarItems={calendarItemsWithOwners}
-                    ownerReservations={[]}
-                    isOwner={false}
-                    onExport={null}
-                    onBook={null}
-                />
+            <main className="booking-layout">
+    
+                <div className="sidebar">
+                    <GroupMeetingInvites invites={groupInvites} />
+                    <h2 className="dash-header">Book an Appointment</h2>
 
-                <GroupMeetingInvites invites={groupInvites} />
-
-                <div className="container">
-                    <section className="dashboard-section">
-                        <h2 className="dash-header">Book an Appointment</h2>
-
-                        <label>
-                            Choose an owner:
-                            <select value={selectedOwnerId} onChange={handleOwnerChange} className="owner-select">
-                                <option value="">Select an owner</option>
-                                {owners.map(owner => (
-                                    <option key={owner.user_id} value={owner.user_id}>
-                                        {owner.first_name} {owner.last_name} ({owner.email})
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-
-                        {selectedOwnerId && (
-                            <button className="secondary-button" style={{ marginLeft: "10px" }}
-                                onClick={() => {
-                                    const owner = owners.find(o => String(o.user_id) === String(selectedOwnerId));
-                                    if (owner) window.location.href = `mailto:${owner.email}`;
-                                }}>
-                                Email Owner
-                            </button>
-                        )}
-
-                        {error && <p className="error-message">{error}</p>}
-                        {pageLoading && <p>Loading...</p>}
-                        {!pageLoading && selectedOwnerId && slots.length === 0 && (
-                            <p><br />No public slots available for this owner.</p>
-                        )}
-
-                        <MeetingRequestForm owners={owners} selectedOwnerId={selectedOwnerId} />
-
-                        <div className="slots-list">
-                            {slots.map(slot => (
-                                <div key={slot.id} className="slot-card">
-                                    <div className="slot-details">
-                                        <h4>{slot.title}</h4>
-                                        <p>
-                                            {formatDateTime(slot.start_time)}
-                                            {" - "}
-                                            {new Date(slot.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                        </p>
-                                        {slot.description && <p>{slot.description}</p>}
-                                        <p>Type: {slot.slot_type}</p>
-                                        <p>Max participants: {slot.max_participants}</p>
-                                    </div>
-                                    <div className="slot-actions">
-                                        <button className="submit-button" type="button"
-                                            disabled={bookingSlotId === slot.id}
-                                            onClick={() => bookSlot(slot.id)}>
-                                            {bookingSlotId === slot.id ? "Booking..." : "Book"}
-                                        </button>
-                                    </div>
-                                </div>
+                    <label>
+                        Choose an owner:
+                        <select value={selectedOwnerId} onChange={handleOwnerChange} className="owner-select">
+                            <option value="">Select an owner</option>
+                            {owners.map(owner => (
+                                <option key={owner.user_id} value={owner.user_id}>
+                                    {owner.first_name} {owner.last_name} ({owner.email})
+                                </option>
                             ))}
+                        </select>
+                    </label>
+
+                    {selectedOwnerId && (
+                        <button className="secondary-button" style={{ marginLeft: "10px" }}
+                            onClick={() => {
+                                const owner = owners.find(o => String(o.user_id) === String(selectedOwnerId));
+                                if (owner) window.location.href = `mailto:${owner.email}`;
+                            }}>
+                            Email Owner
+                        </button>
+                    )}
+
+                    {error && <p className="error-message">{error}</p>}
+                    {pageLoading && <p>Loading...</p>}
+                    {!pageLoading && selectedOwnerId && slots.length === 0 && (
+                        <p><br />No public slots available for this owner.</p>
+                    )}
+
+                    <div className="folder">
+                        <button className="folder-button" onClick={() => setShowRequest(prev => !prev)}>
+                            <span className={`arrow ${showRequest ? "open" : ""}`}>▶</span>
+                            Request a Meeting
+                        </button>
+
+                        <div className={`folder-content ${showRequest ? "open" : ""}`}>
+                            { showRequest && (
+                                <MeetingRequestForm owners={owners} selectedOwnerId={selectedOwnerId} />
+                            )}
+                            
                         </div>
-                    </section>
+                    </div>                   
+
+                    <div className="slots-list">
+                        {slots.map(slot => (
+                            <div key={slot.id} className="slot-card">
+                                <div className="slot-details">
+                                    <h4>{slot.title}</h4>
+                                    <p>
+                                        {formatDateTime(slot.start_time)}
+                                        {" - "}
+                                        {new Date(slot.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                    </p>
+                                    {slot.description && <p>{slot.description}</p>}
+                                    <p>Type: {slot.slot_type}</p>
+                                    <p>Max participants: {slot.max_participants}</p>
+                                </div>
+                                <div className="slot-actions">
+                                    <button className="submit-button" type="button"
+                                        disabled={bookingSlotId === slot.id}
+                                        onClick={() => bookSlot(slot.id)}>
+                                        {bookingSlotId === slot.id ? "Booking..." : "Book"}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                
                 </div>
+                <div className="booking-main">
+                    <MonthCalendar
+                        calendarItems={calendarItemsWithOwners}
+                        ownerReservations={[]}
+                        isOwner={false}
+                        onExport={null}
+                        onBook={null}
+                    />
+                </div>
+                
             </main>
         </div>
     );
