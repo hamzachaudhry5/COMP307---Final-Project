@@ -11,14 +11,14 @@ function formatSlotRange(startTime, endTime) {
 function BookingsList({ appointments = [], owners = [], onCancel }) {
     if (!appointments || appointments.length === 0) return (
         <section className="slots-section">
-            <h3 className="form-header">Your Appointments</h3>
-            <p>You have no upcoming appointments.</p>
+            <h3 className="form-header">Your Bookings</h3>
+            <p>You have no bookings.</p>
         </section>
     );
 
     return (
         <section className="slots-section">
-            <h3 className="form-header">Your Appointments</h3>
+            <h3 className="form-header">Your Bookings</h3>
             <div className="slots-list">
                 {[...appointments]
                     .sort((a, b) => new Date(a.slot?.start_time) - new Date(b.slot?.start_time))

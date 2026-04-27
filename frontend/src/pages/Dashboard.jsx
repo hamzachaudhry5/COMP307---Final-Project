@@ -56,7 +56,9 @@ function Dashboard() {
     // Derived calendar items
     const visibleOwnerSlots = isOwner
         ? slots.filter(s => s.status === "active" || s.status === "full")
+            .map(s => ({ ...s, _isOwnSlot: true }))
         : [];
+
     const appointmentSlots = appointments.map(r => r.slot || r).filter(Boolean);
     const calendarItems = [...appointmentSlots, ...visibleOwnerSlots];
 
@@ -212,14 +214,11 @@ function Dashboard() {
                         onBook={() => navigate("/booking")}
                     />
 
-                    {/* User appointments list */}
-                    {!isOwner && (
-                        <BookingsList
-                            appointments={appointments}
-                            owners={owners} 
-                            onCancel={handleCancelReservation}
-                        />
-                    )}
+                    <BookingsList
+                        appointments={appointments}
+                        owners={owners} 
+                        onCancel={handleCancelReservation}
+                    />
 
                     {isOwner && (
                         <>
