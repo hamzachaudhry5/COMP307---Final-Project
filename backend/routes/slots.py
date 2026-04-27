@@ -1,65 +1,30 @@
-import secrets
-import uuid
-from datetime import timedelta
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from fastapi import APIRouter, Depends
+from sqlmodel import Session
 
 from models.booking import (
-    BookingSlot,
     BookingSlotBulkCreate,
     BookingSlotCreate,
     BookingSlotRead,
     BookingSlotUpdate,
     MailtoResponse,
-    Reservation,
-    SlotStatus,
-    GroupMeeting,
-    build_mailto,
 )
-from models.users import User, UserRole, UserRead, InviteLinkResponse
+from models.users import User, UserRead, InviteLinkResponse
 from database.session import get_session
 from security import get_current_user, get_owner
-from utils import check_slot_overlap
+from services import slot_service
 
 router = APIRouter(prefix="/slots", tags=["Slots"])
 
 
-# Owner: create slot(s) 
 @router.post("", response_model=list[BookingSlotRead], status_code=201)
 def create_slot(
     booking_slot: BookingSlotCreate,
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    """
-    Create a booking slot. If is_recurring=True and recurrence_weeks>1,
-    generates one slot per week automatically (all start as PRIVATE).
-    """
-    if booking_slot.end_time <= booking_slot.start_time:
-        raise HTTPException(400, "end_time must be after start_time")
-
-    recurring_weeks = booking_slot.recurrence_weeks if (booking_slot.is_recurring and booking_slot.recurrence_weeks and booking_slot.recurrence_weeks > 1) else 1
-    created_slots = []
-
-    for week in range(recurring_weeks):
-        delta = timedelta(weeks=week)
-        start_time, end_time = booking_slot.start_time + delta, booking_slot.end_time + delta
-        data = booking_slot.model_dump()
-        data["start_time"] = start_time
-        data["end_time"] = end_time
-        data["owner_id"] = owner.user_id
-        slot = BookingSlot(**data)
-        
-        session.add(slot)
-        created_slots.append(slot)
-
-    session.commit()
-    for slot in created_slots:
-        session.refresh(slot)
-
-    return created_slots
+    return slot_service.create_slot(booking_slot, session, owner)
 
 
 @router.post("/bulk", response_model=list[BookingSlotRead], status_code=201)
@@ -68,181 +33,61 @@ def create_bulk_slots(
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    """
-    Create multiple slot templates in one request.
-    Each template can optionally be recurring for N weeks.
-    """
-    if not payload.slots:
-        raise HTTPException(400, "At least one slot is required")
-
-    created_slots: list[BookingSlot] = []
-    batch_id = str(uuid.uuid4())
-    for slot_data in payload.slots:
-        if slot_data.end_time <= slot_data.start_time:
-            raise HTTPException(400, "Each slot end_time must be after start_time")
-
-        recurring_weeks = slot_data.recurrence_weeks if (slot_data.is_recurring and slot_data.recurrence_weeks and slot_data.recurrence_weeks > 1) else 1
-        for week in range(recurring_weeks):
-            delta = timedelta(weeks=week)
-            start_time, end_time = slot_data.start_time + delta, slot_data.end_time + delta
-            data = slot_data.model_dump()
-            data["start_time"] = start_time
-            data["end_time"] = end_time
-            data["owner_id"] = owner.user_id
-            data["batch_id"] = batch_id
-            slot = BookingSlot(**data)
-
-            session.add(slot)
-            created_slots.append(slot)
-
-    session.commit()
-    for slot in created_slots:
-        session.refresh(slot)
-    return created_slots
+    return slot_service.create_bulk_slots(payload, session, owner)
 
 
-# Owner: view own slots 
 @router.get("/mine", response_model=list[BookingSlotRead])
 def get_my_slots(
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    """Owner sees all their slots (private + active + booked)."""
-    return session.exec(
-        select(BookingSlot).where(BookingSlot.owner_id == owner.user_id).order_by(BookingSlot.start_time)
-    ).all()
+    return slot_service.get_my_slots(session, owner)
 
 
-# Owner: activate a slot 
 @router.patch("/{slot_id}/activate", response_model=BookingSlotRead)
 def activate_slot(
     slot_id: int,
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    slot = _get_owned_slot(slot_id, owner, session)
-
-    if slot.status != SlotStatus.PRIVATE:
-        raise HTTPException(400, "Only PRIVATE slots can be activated")
-    
-    check_slot_overlap( 
-        owner_id=owner.user_id,
-        start_time=slot.start_time,
-        end_time=slot.end_time,
-        session=session,
-        current_slot_id=slot.id,
-    )
-
-    slot.status = SlotStatus.ACTIVE
-    session.commit()
-    session.refresh(slot)
-    return slot
+    return slot_service.activate_slot(slot_id, session, owner)
 
 
-# Owner: activate slot(s) based on the batch id
 @router.patch("/batch/{batch_id}/activate", response_model=list[BookingSlotRead])
 def activate_batch(batch_id: str, session: Session = Depends(get_session), owner: User = Depends(get_owner)):
-    slots = session.exec(
-        select(BookingSlot).where(BookingSlot.batch_id == batch_id, BookingSlot.owner_id == owner.user_id)
-    ).all()
-    if not slots:
-        raise HTTPException(404, "Batch not found")
-    
-    # Validate all slots first before mutating any
-    for slot in slots:
-        if slot.status == SlotStatus.PRIVATE:
-            check_slot_overlap(owner.user_id, slot.start_time, slot.end_time, session, slot.id)
-    
-    # Only mutate once all checks pass
-    for slot in slots:
-        if slot.status == SlotStatus.PRIVATE:
-            slot.status = SlotStatus.ACTIVE
-            
-    session.commit()
-    return slots
+    return slot_service.activate_batch(batch_id, session, owner)
 
 
-# Owner: deactivate a slot 
 @router.patch("/{slot_id}/deactivate", response_model=BookingSlotRead)
 def deactivate_slot(
     slot_id: int,
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    slot = _get_owned_slot(slot_id, owner, session)
-
-    has_reservations = session.exec(
-        select(Reservation).where(Reservation.slot_id == slot.id)
-    ).first()
-    if has_reservations:
-        raise HTTPException(400, "Cannot deactivate a slot with existing reservations. Delete it instead to notify bookers.")
-
-    slot.status = SlotStatus.PRIVATE
-    session.commit()
-    session.refresh(slot)
-    return slot
+    return slot_service.deactivate_slot(slot_id, session, owner)
 
 
-# Owner: deactivate slot(s) based on batch_id
 @router.patch("/batch/{batch_id}/deactivate", response_model=list[BookingSlotRead])
 def deactivate_batch(batch_id: str, session: Session = Depends(get_session), owner: User = Depends(get_owner)):
-    slots = session.exec(
-        select(BookingSlot).where(BookingSlot.batch_id == batch_id, BookingSlot.owner_id == owner.user_id)
-    ).all()
-    if not slots:
-        raise HTTPException(404, "Batch not found")
-    
-    for slot in slots:
-        if slot.status == SlotStatus.FULL:
-            raise HTTPException(400, f"Slot '{slot.title}' on {slot.start_time.strftime('%B %d at %H:%M')} has reservations. Delete the batch instead to notify bookers.")
-        elif slot.status == SlotStatus.ACTIVE:
-            has_reservations = session.exec(
-                select(Reservation).where(Reservation.slot_id == slot.id)
-            ).first()
-            if has_reservations:
-                raise HTTPException(400, f"Slot '{slot.title}' on {slot.start_time.strftime('%B %d at %H:%M')} has reservations. Delete the batch instead to notify bookers.")
-            
-    for slot in slots:
-        slot.status = SlotStatus.PRIVATE
-        
-    session.commit()
-    return slots
+    return slot_service.deactivate_batch(batch_id, session, owner)
 
 
-# Owner: create/retrieve invitation link
 @router.post("/invite-link", response_model=InviteLinkResponse)
 def create_invite_link(
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    if not owner.invite_token:
-        owner.invite_token = secrets.token_urlsafe(32)
-        session.add(owner)
-        session.commit()
-        session.refresh(owner)
-    return InviteLinkResponse(
-        invite_token=owner.invite_token,
-        invite_url=_invite_url(owner.invite_token),
-    )
+    return slot_service.get_or_create_invite_link(session, owner)
 
 
-# Owner: regenerate invitation link
 @router.post("/invite-link/regenerate", response_model=InviteLinkResponse)
 def regenerate_invite_link(
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    owner.invite_token = secrets.token_urlsafe(32)
-    session.add(owner)
-    session.commit()
-    session.refresh(owner)
-    return InviteLinkResponse(
-        invite_token=owner.invite_token,
-        invite_url=_invite_url(owner.invite_token),
-    )
+    return slot_service.regenerate_invite_link(session, owner)
 
 
-#Owner: update slot
 @router.patch("/{slot_id}", response_model=BookingSlotRead)
 def update_slot(
     slot_id: int,
@@ -250,224 +95,61 @@ def update_slot(
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    slot = _get_owned_slot(slot_id, owner, session)
-
-    # Block edits if anyone has reserved this slot
-    has_reservations = session.exec(
-        select(Reservation).where(Reservation.slot_id == slot.id)
-    ).first()
-    if has_reservations:
-        raise HTTPException(400, "Cannot edit a slot that already has reservations")
-
-    for field, value in booking_slot.model_dump(exclude_unset=True).items():
-        setattr(slot, field, value)
-
-    if slot.end_time <= slot.start_time:
-        raise HTTPException(400, "end_time must be after start_time")
-    
-    # Ensure active slots don't overlap with each other
-    if slot.status == SlotStatus.ACTIVE:
-        check_slot_overlap(
-            owner_id=owner.user_id,
-            start_time=slot.start_time,
-            end_time=slot.end_time,
-            session=session,
-            current_slot_id=slot.id
-        )
-
-    session.commit()
-    session.refresh(slot)
-    return slot
+    return slot_service.update_slot(slot_id, booking_slot, session, owner)
 
 
-# Owner: delete a slot 
 @router.delete("/{slot_id}", response_model=Optional[MailtoResponse])
 def delete_slot(
     slot_id: int,
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    slot = _get_owned_slot(slot_id, owner, session)
-    
-    # Pre-fetch booker emails for notification before deletion happens
-    statement = (
-        select(User.email)
-        .join(Reservation, Reservation.user_id == User.user_id)
-        .where(Reservation.slot_id == slot_id)
-    )
-    reservation_booker_emails = session.exec(statement).all()
-    
+    return slot_service.delete_slot(slot_id, session, owner)
 
-    mailto = None
-    if reservation_booker_emails:
-        mailto = build_mailto(
-            to=",".join(reservation_booker_emails),
-            subject=f"Cancellation: {slot.title}",
-            body=(
-                f"Hello,\n\n"
-                f"This email is to inform you that the booking slot '{slot.title}' "
-                f"scheduled for {slot.start_time.strftime('%B %d, %Y at %H:%M')} "
-                f"has been cancelled/deleted by the owner.\n\n"
-                f"Please check the dashboard for alternative times."
-            ),
-        )
 
-    linked_meetings = session.exec(
-        select(GroupMeeting).where(GroupMeeting.finalized_slot_id == slot_id)
-    ).all()
-    for meeting in linked_meetings:
-        meeting.is_finalized = False
-        session.add(meeting)
-
-    session.delete(slot)
-    session.commit()
-
-    return mailto
-
-# Owner: delete slot(s) based on uuid
 @router.delete("/batch/{batch_id}", response_model=Optional[MailtoResponse])
 def delete_batch(batch_id: str, session: Session = Depends(get_session), owner: User = Depends(get_owner)):
-    slots = session.exec(
-        select(BookingSlot).where(BookingSlot.batch_id == batch_id, BookingSlot.owner_id == owner.user_id)
-    ).all()
-    if not slots:
-        raise HTTPException(404, "Batch not found")
-    
-    slot_ids = [slot.id for slot in slots]
-    emails_result = session.exec(
-        select(User.email).join(Reservation, Reservation.user_id == User.user_id)
-        .where(Reservation.slot_id.in_(slot_ids))
-    ).all()
-    
-    mailto = None
-    if emails_result:
-        mailto = build_mailto(
-            to=",".join(set(emails_result)),
-            subject=f"Cancellation: {slots[0].title}",
-            body=f"One or more slots you booked have been cancelled by the owner."
-        )
-    
-    for slot in slots:
-        session.delete(slot)
-    session.commit()
-    return mailto
+    return slot_service.delete_batch(batch_id, session, owner)
 
-# Owner: view who booked each slot 
+
 @router.get("/{slot_id}/reservations", response_model=List[UserRead])
 def get_slot_bookers(
     slot_id: int,
     session: Session = Depends(get_session),
     owner: User = Depends(get_owner),
 ):
-    """Owner sees all users who reserved a given slot."""
-    slot = _get_owned_slot(slot_id, owner, session)
-    statement = (
-        select(User)
-        .join(Reservation, Reservation.user_id == User.user_id)
-        .where(Reservation.slot_id == slot_id)
-    )
-    
-    bookers = session.exec(statement).all()
-    return bookers
+    return slot_service.get_slot_bookers(slot_id, session, owner)
 
 
-#Public: Given an invite url, return an owner's active booking slots  
 @router.get("/invite/{token}", response_model=list[BookingSlotRead])
 def get_slots_by_invite(
     token: str,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Resolves an invite URL token. Returns the owner's active slots.
-    Frontend should redirect to login before hitting this if unauthenticated.
-    """
-    owner = session.exec(
-        select(User).where(User.invite_token == token, User.role == UserRole.owner)
-    ).first()
-    if not owner:
-        raise HTTPException(404, "Invalid or expired invite link")
-
-    if owner.user_id == current_user.user_id:
-        raise HTTPException(400, "You cannot book your own slots via invite link")
-
-    return session.exec(
-        select(BookingSlot)
-        .where(BookingSlot.owner_id == owner.user_id)
-        .where(BookingSlot.status == SlotStatus.ACTIVE)
-        .order_by(BookingSlot.start_time)
-    ).all()
+    return slot_service.get_slots_by_invite(token, session, current_user)
 
 
-# Public: list all owners 
 @router.get("/owners", response_model=list[UserRead])
 def list_owners(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Returns all active owners except the current user."""
-    return session.exec(
-        select(User).where(
-            User.role == UserRole.owner, 
-            User.is_active == True,
-            User.user_id != current_user.user_id
-        )
-    ).all()
+    return slot_service.list_owners(session, current_user)
 
 
-# Public: list owners that currently have active slots
 @router.get("/owners/with-active-slots", response_model=list[UserRead])
 def list_owners_with_active_slots(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    owners = session.exec(
-        select(User).where(
-            User.role == UserRole.owner, 
-            User.is_active == True,
-            User.user_id != current_user.user_id
-        )
-    ).all()
-    return [
-        owner
-        for owner in owners
-        if session.exec(
-            select(BookingSlot).where(
-                BookingSlot.owner_id == owner.user_id,
-                BookingSlot.status == SlotStatus.ACTIVE,
-            )
-        ).first()
-    ]
+    return slot_service.list_owners_with_active_slots(session, current_user)
 
 
-#  Public: browse a specific owner's active slots 
 @router.get("/owner/{owner_id}", response_model=list[BookingSlotRead])
 def get_owner_active_slots(
     owner_id: int,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    if owner_id == current_user.user_id:
-        raise HTTPException(400, "You cannot book your own slots")
-
-    owner = session.get(User, owner_id)
-    if not owner or owner.role != UserRole.owner:
-        raise HTTPException(404, "Owner not found")
-
-    return session.exec(
-        select(BookingSlot)
-        .where(BookingSlot.owner_id == owner_id)
-        .where(BookingSlot.status == SlotStatus.ACTIVE)
-        .order_by(BookingSlot.start_time)
-    ).all()
-
-
-# Helpers
-def _get_owned_slot(slot_id: int, owner: User, session: Session) -> BookingSlot:
-    slot = session.get(BookingSlot, slot_id)
-    if not slot or slot.owner_id != owner.user_id:
-        raise HTTPException(404, "Slot not found")
-    return slot
-
-def _invite_url(token: str) -> str:
-    return f"/booking/invite/{token}"
+    return slot_service.get_owner_active_slots(owner_id, session, current_user)
