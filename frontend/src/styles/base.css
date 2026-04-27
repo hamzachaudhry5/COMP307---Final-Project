@@ -1,0 +1,28 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Poppins', sans-serif; /* same as cs.mgill i think */
+  background-color: #f8fafc;
+  color: #1f2937;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  margin-left: 20px;
+  font-weight: 500;
+}
+
+button {
+  border: none;
+  padding: 12px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  background-color: #a6192e;
+  color: white;
+}

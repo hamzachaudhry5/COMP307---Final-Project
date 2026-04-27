@@ -1,0 +1,147 @@
+.login-form, .slot-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.login-form label, .slot-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.login-form input, .slot-form input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+.login-form input:focus, .slot-form input:focus {
+  outline: none;
+  border-color: #0f172a;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #374151;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.visibility-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-slider {
+  position: relative;
+  width: 54px;
+  height: 30px;
+  border-radius: 999px;
+  background-color: #cbd5e1;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: white;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.visibility-toggle input:checked + .toggle-slider {
+  background-color: #a6192e;
+}
+
+.visibility-toggle input:checked + .toggle-slider::before {
+  transform: translateX(24px);
+}
+
+.visibility-toggle input:focus-visible + .toggle-slider {
+  box-shadow: 0 0 0 4px rgba(166, 25, 46, 0.18);
+}
+
+.slot-select{
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #cbd5e1;
+  margin-top: 8px;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+/* weekday select */
+.weekday-section {
+  margin-top: 10px;
+}
+
+.weekday-title {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.weekday-grid {
+  display: flex;
+  gap: 12px 14px;
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: center;
+}
+
+.weekday-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 14px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+
+  min-width: 100px;
+
+  transition: 0.15s;
+}
+
+.weekday-pill:hover {
+  background: #f3f3f3;
+}
+
+.weekday-pill input {
+  cursor: pointer;
+}
+
+.description-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 14px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 1rem;
+}

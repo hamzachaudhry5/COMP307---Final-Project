@@ -1,0 +1,104 @@
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.week-title {
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.week-nav button {
+  background: none;
+  color: #a6192e;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 1.2rem;
+}
+
+.week-day {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px;
+  min-height: 160px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.week-day-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.week-day-initial {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #a6192e;
+  line-height: 1;
+}
+
+.week-day-number {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.week-day-slots {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.calendar-slot {
+  background: #e5e7eb;
+  color: black;
+  border-radius: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+}
+
+.calendar-slot--has-bookings {
+    background-color: #a6192e;
+    color: white;
+}
+
+.slot-capacity {
+    font-size: 0.7rem;
+    color: inherit;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+
+
+/* MONTH GRID */
+.month-grid{
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+}
+.month-day{
+  min-height: 100px;
+  border-radius: 0%;
+}
+.muted-day{
+  opacity: 0.35;
+}
