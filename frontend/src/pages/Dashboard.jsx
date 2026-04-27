@@ -212,14 +212,11 @@ function Dashboard() {
                         onBook={() => navigate("/booking")}
                     />
 
-                    {/* User appointments list */}
-                    {!isOwner && (
-                        <BookingsList
-                            appointments={appointments}
-                            owners={owners} 
-                            onCancel={handleCancelReservation}
-                        />
-                    )}
+                    <BookingsList
+                        appointments={appointments}
+                        owners={owners} 
+                        onCancel={handleCancelReservation}
+                    />
 
                     {isOwner && (
                         <>

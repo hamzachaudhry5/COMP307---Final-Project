@@ -31,7 +31,7 @@ function WeekCalendar({ calendarItems, ownerReservations, isOwner, onExport, onB
     return (
         <section className="dashboard-section">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-                <h3 className="form-header" style={{ marginBottom: 0 }}>Your Bookings:</h3>
+                <h3 className="form-header" style={{ marginBottom: 0 }}>Your Appointments:</h3>
                 <button className="secondary-button" onClick={onExport}>
                     Export Calendar (.ics)
                 </button>
