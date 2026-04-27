@@ -64,7 +64,7 @@ function MonthCalendar({ calendarItems, ownerReservations, isOwner }) {
                                         ? ownerReservations.filter(r => Number(r.slot_id) === Number(item.id)).length
                                         : 0;
                                     return (
-                                        <div key={item.id} className={`calendar-slot${isRed ? " calendar-slot--has-bookings" : ""}`}>
+                                        <div key={item.id} className={`calendar-slot${isRed ? " calendar-slot-booking" : ""}`}>
                                             <div className="slot-time">
                                                 {new Date(item.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                                 {" - "}

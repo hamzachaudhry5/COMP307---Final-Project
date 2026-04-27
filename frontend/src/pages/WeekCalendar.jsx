@@ -43,18 +43,30 @@ function WeekCalendar({ calendarItems, ownerReservations, isOwner, onExport, onB
                 <button onClick={() => setWeekOffset(prev => prev + 1)}>&gt;</button>
             </div>
 
-            {isOwner && (
-                <div style={{ display: "flex", gap: "16px", marginBottom: "8px", fontSize: "0.8rem", color: "#6b7280" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#e5e7eb", display: "inline-block" }} />
-                        No bookings yet
-                    </span>
+            {/* Legend */}
+            <div style={{ display: "flex", gap: "16px", marginBottom: "8px", fontSize: "0.8rem", color: "#6b7280", flexWrap: "wrap" }}>
+                {isOwner ? (
+                    <>
+                        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#e5e7eb", border: "1px solid #d1d5db", display: "inline-block" }} />
+                            Your slot (Empty)
+                        </span>
+                        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#1d4ed8", display: "inline-block" }} />
+                            Your slot (Booked)
+                        </span>
+                        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#a6192e", display: "inline-block" }} />
+                            Booking
+                        </span>
+                    </>
+                ) : (
                     <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#a6192e", display: "inline-block" }} />
-                        Has bookings
+                        Booked appointment
                     </span>
-                </div>
-            )}
+                )}
+            </div>
 
             <div className="week-grid">
                 {weekDays.map((day, i) => {
@@ -69,21 +81,27 @@ function WeekCalendar({ calendarItems, ownerReservations, isOwner, onExport, onB
                             </div>
                             <div className="week-day-slots">
                                 {dayItems.map(item => {
-                                    const hasReservations = isOwner && ownerReservations.some(r => Number(r.slot_id) === Number(item.id));
-                                    const isRed = !isOwner || hasReservations;
-                                    const bookerCount = isOwner
-                                        ? ownerReservations.filter(r => Number(r.slot_id) === Number(item.id)).length
-                                        : 0;
+                                    const hasReservations = ownerReservations.some(r => Number(r.slot_id) === Number(item.id));
+                                    const bookerCount = ownerReservations.filter(r => Number(r.slot_id) === Number(item.id)).length;
+
+                                    let slotClass = "calendar-slot";
+                                    if (item._isOwnSlot) {
+                                        if (hasReservations) slotClass += " calendar-slot--own-slot-booked";
+                                    } else {
+                                        slotClass += " calendar-slot-booking";
+                                    }
+
                                     return (
-                                        <div key={item.id} className={`calendar-slot${isRed ? " calendar-slot--has-bookings" : ""}`}>
+                                        <div key={item.id} className={slotClass}>
                                             <div className="slot-time">
                                                 {new Date(item.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                                 {" - "}
                                                 {new Date(item.end_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                             </div>
                                             <div className="slot-title">{item.title}</div>
-                                            <div className="slot-owner"><strong>Owner:</strong><br></br> {item.ownerName}</div>
-                                            {isOwner && (
+                                            <div className="slot-owner"><strong>Owner:</strong><br />{item.ownerName}</div>
+                                            {/* Capacity only for own slots (types 1 & 2) */}
+                                            {item._isOwnSlot && (
                                                 <div className="slot-capacity">
                                                     {bookerCount} / {item.max_participants || 1} booked
                                                 </div>
@@ -100,9 +118,7 @@ function WeekCalendar({ calendarItems, ownerReservations, isOwner, onExport, onB
                 })}
             </div>
 
-            
             <button className="submit-button" onClick={onBook}>Book Appointment</button>
-            
         </section>
     );
 }

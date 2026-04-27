@@ -76,8 +76,13 @@
   font-size: 0.8rem;
 }
 
-.calendar-slot--has-bookings {
+.calendar-slot-booking {
     background-color: #a6192e;
+    color: white;
+}
+
+.calendar-slot--own-slot-booked {
+    background-color: #1d4ed8;
     color: white;
 }
 

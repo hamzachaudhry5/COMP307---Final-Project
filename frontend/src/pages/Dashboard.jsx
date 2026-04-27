@@ -56,7 +56,9 @@ function Dashboard() {
     // Derived calendar items
     const visibleOwnerSlots = isOwner
         ? slots.filter(s => s.status === "active" || s.status === "full")
+            .map(s => ({ ...s, _isOwnSlot: true }))
         : [];
+
     const appointmentSlots = appointments.map(r => r.slot || r).filter(Boolean);
     const calendarItems = [...appointmentSlots, ...visibleOwnerSlots];
 
