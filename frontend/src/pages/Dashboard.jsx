@@ -56,7 +56,9 @@ function Dashboard() {
     // Derived calendar items
     const visibleOwnerSlots = isOwner
         ? slots.filter(s => s.status === "active" || s.status === "full")
+            .map(s => ({ ...s, _isOwnSlot: true }))
         : [];
+
     const appointmentSlots = appointments.map(r => r.slot || r).filter(Boolean);
     const calendarItems = [...appointmentSlots, ...visibleOwnerSlots];
 
@@ -125,7 +127,7 @@ function Dashboard() {
         try {
             const res = await api.slots.createInviteLink();
             let url = res.invite_url;
-            if (url.startsWith("/")) url = `${import.meta.env.VITE_FRONTEND_URL || window.location.origin}${url}`;
+            if (url.startsWith("/")) url = `${import.meta.env.VITE_FRONTEND_URL}${url}`;
             await navigator.clipboard.writeText(url);
             alert("Invite URL copied:\n" + url);
         } catch (err) { alert("Failed to generate invite link"); }
@@ -212,14 +214,11 @@ function Dashboard() {
                         onBook={() => navigate("/booking")}
                     />
 
-                    {/* User appointments list */}
-                    {!isOwner && (
-                        <BookingsList
-                            appointments={appointments}
-                            owners={owners} 
-                            onCancel={handleCancelReservation}
-                        />
-                    )}
+                    <BookingsList
+                        appointments={appointments}
+                        owners={owners} 
+                        onCancel={handleCancelReservation}
+                    />
 
                     {isOwner && (
                         <>
