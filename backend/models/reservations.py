@@ -3,10 +3,13 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from sqlmodel import Field, Relationship, SQLModel
 
+# Runtime imports for Pydantic forward references
+from models.slots import BookingSlotRead
+from models.meeting_requests import MeetingRequesterRead
+
 if TYPE_CHECKING:
-    from models.slots import BookingSlot, BookingSlotRead
+    from models.slots import BookingSlot
     from models.users import User
-    from models.meeting_requests import MeetingRequesterRead
 
 ### Reservation 
 class ReservationBase(SQLModel):

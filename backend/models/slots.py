@@ -6,6 +6,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from models.reservations import Reservation
+    from models.users import User
 
 ### Enums
 class SlotType(str, Enum):
@@ -18,12 +19,6 @@ class SlotStatus(str, Enum):
     PRIVATE = "private"
     ACTIVE = "active"
     FULL = "full"
-
-
-class RequestStatus(str, Enum):
-    PENDING = "pending"
-    ACCEPTED = "accepted"
-    DECLINED = "declined"
 
 
 ### BookingSlot 
