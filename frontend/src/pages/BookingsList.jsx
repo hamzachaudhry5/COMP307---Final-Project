@@ -1,3 +1,5 @@
+// Sean Xu
+
 import api from "../api/client";
 
 function formatSlotRange(startTime, endTime) {

@@ -1,3 +1,5 @@
+// Sean Xu
+
 import { useState } from "react";
 
 function WeekCalendar({ calendarItems, ownerReservations, isOwner, onExport, onBook }) {
