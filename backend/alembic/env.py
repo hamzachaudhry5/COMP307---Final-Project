@@ -8,7 +8,10 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from sqlmodel import SQLModel
 from models.users import User
-from models.booking import BookingSlot, Reservation, GroupMeeting, GroupAvailabilityOption, GroupVote, MeetingRequest
+from models.slots import BookingSlot
+from models.reservations import Reservation
+from models.group_meetings import GroupMeeting, GroupAvailabilityOption, GroupVote
+from models.meeting_requests import MeetingRequest
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 from dotenv import load_dotenv
