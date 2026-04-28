@@ -6,18 +6,16 @@ from typing import Optional, List
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
-from models.booking import (
+from models.slots import (
     BookingSlot,
     BookingSlotBulkCreate,
     BookingSlotCreate,
-    BookingSlotRead,
     BookingSlotUpdate,
-    MailtoResponse,
-    Reservation,
     SlotStatus,
-    GroupMeeting,
-    build_mailto,
 )
+from models.reservations import Reservation
+from models.mailto import MailtoResponse, build_mailto
+from models.group_meetings import GroupMeeting
 from models.users import User, UserRole, InviteLinkResponse
 from utils import check_slot_overlap
 

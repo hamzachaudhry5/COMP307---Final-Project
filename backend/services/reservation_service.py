@@ -4,13 +4,9 @@ from fastapi import HTTPException
 from sqlmodel import Session, select
 from sqlalchemy import func
 
-from models.booking import (
-    BookingSlot,
-    MailtoResponse,
-    Reservation,
-    SlotStatus,
-    build_mailto,
-)
+from models.slots import BookingSlot, SlotStatus
+from models.reservations import Reservation
+from models.mailto import MailtoResponse, build_mailto
 from models.users import User
 from utils import check_reservation_overlap
 

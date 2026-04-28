@@ -4,21 +4,18 @@ from typing import List
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
-from models.booking import (
-    BookingSlot,
+from models.slots import BookingSlot, SlotStatus, SlotType
+from models.group_meetings import (
     GroupAvailabilityOption,
     GroupMeetingInvite,
     GroupMeeting,
     GroupMeetingCreate,
     GroupVote,
     GroupVoteCreate,
-    MailtoResponse,
-    Reservation,
-    SlotStatus,
-    SlotType,
-    build_mailto,
 )
 from models.users import User
+from models.reservations import Reservation
+from models.mailto import MailtoResponse, build_mailto
 
 def create_group_meeting(
     data: GroupMeetingCreate,

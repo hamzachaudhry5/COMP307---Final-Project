@@ -3,18 +3,11 @@ from typing import List
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
-from models.booking import (
-    BookingSlot,
-    MailtoResponse,
-    MeetingRequest,
-    MeetingRequestCreate,
-    Reservation,
-    RequestStatus,
-    SlotStatus,
-    SlotType,
-    build_mailto,
-)
+from models.slots import BookingSlot, SlotStatus, SlotType
+from models.mailto import MailtoResponse, build_mailto
 from models.users import User, UserRole
+from models.reservations import Reservation
+from models.meeting_requests import MeetingRequest, MeetingRequestCreate, RequestStatus
 from utils import check_reservation_overlap
 
 def send_request(

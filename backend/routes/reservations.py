@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from models.booking import (
-    MailtoResponse,
-    ReservationRead,
-)
+from models.reservations import ReservationRead
+from models.mailto import MailtoResponse
 from models.users import User
 from database.session import get_session
 from security import get_current_user, get_owner

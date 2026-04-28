@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import List
 
 from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
-from models.users import User, UserCreate, Token, RefreshToken
+from models.users import User, UserCreate, RefreshToken
 from security import (
     hash_password, 
     verify_password, 

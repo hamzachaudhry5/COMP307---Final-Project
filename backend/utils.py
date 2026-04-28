@@ -1,6 +1,7 @@
 from sqlmodel import Session, select
 from fastapi import HTTPException
-from models.booking import BookingSlot, SlotStatus, Reservation
+from models.slots import BookingSlot, SlotStatus
+from models.reservations import Reservation
 
 def check_slot_overlap(owner_id: int, start_time, end_time, session: Session, current_slot_id: int = None):
     statement = select(BookingSlot).where(

@@ -3,13 +3,13 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from models.booking import (
+from models.slots import (
     BookingSlotBulkCreate,
     BookingSlotCreate,
     BookingSlotRead,
     BookingSlotUpdate,
-    MailtoResponse,
 )
+from models.mailto import MailtoResponse
 from models.users import User, UserRead, InviteLinkResponse
 from database.session import get_session
 from security import get_current_user, get_owner

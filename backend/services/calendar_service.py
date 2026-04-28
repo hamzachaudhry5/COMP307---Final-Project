@@ -3,11 +3,8 @@ from icalendar import Calendar, Event
 from sqlmodel import Session, select
 from sqlalchemy import or_
 
-from models.booking import (
-    BookingSlot,
-    Reservation,
-    SlotStatus,
-)
+from models.slots import BookingSlot, SlotStatus
+from models.reservations import Reservation
 from models.users import User, UserRole
 
 def generate_ical(

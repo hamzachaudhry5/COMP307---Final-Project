@@ -6,8 +6,8 @@ from zoneinfo import ZoneInfo
 import enum
 
 if TYPE_CHECKING:
-    from models.booking import BookingSlot
-    from models.booking import Reservation
+    from models.slots import BookingSlot
+    from models.reservations import Reservation
 
 class UserRole(str, enum.Enum):
     owner = "owner"
