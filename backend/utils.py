@@ -1,5 +1,5 @@
 from sqlmodel import Session, select
-from fastapi import HTTPException
+from exceptions import ConflictError
 from models.slots import BookingSlot, SlotStatus
 from models.reservations import Reservation
 
@@ -14,7 +14,7 @@ def check_slot_overlap(owner_id: int, start_time, end_time, session: Session, cu
         statement = statement.where(BookingSlot.id != current_slot_id)
     
     if session.exec(statement).first():
-        raise HTTPException(409, f"Slot overlaps with an existing slot")
+        raise ConflictError(f"Slot overlaps with an existing slot")
 
 
 def check_reservation_overlap(user_id: int, start_time, end_time, session: Session):
@@ -28,4 +28,4 @@ def check_reservation_overlap(user_id: int, start_time, end_time, session: Sessi
         )
     ).first()
     if overlapping:
-        raise HTTPException(409, "Your requested time overlaps with an existing booking")
+        raise ConflictError("Your requested time overlaps with an existing booking")

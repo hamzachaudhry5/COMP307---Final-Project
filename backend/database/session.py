@@ -1,5 +1,5 @@
 import os
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from sqlmodel import Session, create_engine
 from dotenv import load_dotenv
 from models.users import User, UserRole

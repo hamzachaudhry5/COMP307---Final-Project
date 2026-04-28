@@ -1,9 +1,9 @@
 from datetime import timedelta
 from typing import List
 
-from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from exceptions import ResourceNotFoundError, ValidationFailedError, UnauthorizedError
 from models.slots import BookingSlot, SlotStatus, SlotType
 from models.group_meetings import (
     GroupAvailabilityOption,
@@ -23,9 +23,9 @@ def create_group_meeting(
     owner: User,
 ) -> GroupMeeting:
     if not data.options:
-        raise HTTPException(400, "At least one time option is required")
+        raise ValidationFailedError("At least one time option is required")
     if not data.invited_user_ids:
-        raise HTTPException(400, "At least one invited user is required")
+        raise ValidationFailedError("At least one invited user is required")
 
     meeting = GroupMeeting(
         title=data.title,
@@ -37,7 +37,7 @@ def create_group_meeting(
 
     for option in data.options:
         if option.end_time <= option.start_time:
-            raise HTTPException(400, "Each option's end_time must be after start_time")
+            raise ValidationFailedError("Each option's end_time must be after start_time")
         session.add(
             GroupAvailabilityOption(
                 meeting_id=meeting.id,
@@ -52,9 +52,9 @@ def create_group_meeting(
     invited_ids = {u.user_id for u in invited_users}
     missing_ids = sorted(set(data.invited_user_ids) - invited_ids)
     if missing_ids:
-        raise HTTPException(400, f"Invited users not found: {missing_ids}")
+        raise ValidationFailedError(f"Invited users not found: {missing_ids}")
     if owner.user_id in invited_ids:
-        raise HTTPException(400, "Owner cannot be in invited users list")
+        raise ValidationFailedError("Owner cannot be in invited users list")
 
     for invited_user_id in invited_ids:
         session.add(GroupMeetingInvite(meeting_id=meeting.id, user_id=invited_user_id))
@@ -91,7 +91,7 @@ def get_group_meeting(
 ) -> GroupMeeting:
     meeting = session.get(GroupMeeting, meeting_id)
     if not meeting:
-        raise HTTPException(404, "Meeting not found")
+        raise ResourceNotFoundError("Meeting not found")
     return meeting
 
 def vote(
@@ -102,9 +102,9 @@ def vote(
 ) -> dict:
     meeting = session.get(GroupMeeting, meeting_id)
     if not meeting:
-        raise HTTPException(404, "Meeting not found")
+        raise ResourceNotFoundError("Meeting not found")
     if meeting.is_finalized:
-        raise HTTPException(400, "Voting is closed, meeting is already finalized")
+        raise ValidationFailedError("Voting is closed, meeting is already finalized")
 
     invited_ids = set(
         session.exec(
@@ -114,7 +114,7 @@ def vote(
         ).all()
     )
     if user.user_id not in invited_ids:
-        raise HTTPException(403, "Only invited users can vote on this meeting")
+        raise UnauthorizedError("Only invited users can vote on this meeting")
 
     valid_options = {
         option.id: option
@@ -126,7 +126,7 @@ def vote(
     }
     for option_id in data.option_ids:
         if option_id not in valid_options:
-            raise HTTPException(400, f"Option {option_id} does not belong to this meeting")
+            raise ValidationFailedError(f"Option {option_id} does not belong to this meeting")
 
     old_votes = session.exec(
         select(GroupVote).where(
@@ -161,7 +161,7 @@ def get_heatmap(
 ) -> List[GroupAvailabilityOption]:
     meeting = session.get(GroupMeeting, meeting_id)
     if not meeting or meeting.owner_id != owner.user_id:
-        raise HTTPException(404, "Meeting not found")
+        raise ResourceNotFoundError("Meeting not found")
 
     return session.exec(
         select(GroupAvailabilityOption)
@@ -178,16 +178,16 @@ def finalize_meeting(
 ) -> MailtoResponse:
     meeting = session.get(GroupMeeting, meeting_id)
     if not meeting or meeting.owner_id != owner.user_id:
-        raise HTTPException(404, "Meeting not found")
+        raise ResourceNotFoundError("Meeting not found")
     if meeting.is_finalized:
-        raise HTTPException(400, "Meeting is already finalized")
+        raise ValidationFailedError("Meeting is already finalized")
 
     option = session.get(GroupAvailabilityOption, option_id)
     if not option or option.meeting_id != meeting_id:
-        raise HTTPException(400, "Invalid option for this meeting")
+        raise ValidationFailedError("Invalid option for this meeting")
 
     if recurrence_weeks < 1:
-        raise HTTPException(400, "recurrence_weeks must be between 1 and 52")
+        raise ValidationFailedError("recurrence_weeks must be between 1 and 52")
 
     invited_user_ids = session.exec(
         select(GroupMeetingInvite.user_id)
@@ -195,7 +195,7 @@ def finalize_meeting(
         .distinct()
     ).all()
     if not invited_user_ids:
-        raise HTTPException(400, "Cannot finalize a meeting with no invited users")
+        raise ValidationFailedError("Cannot finalize a meeting with no invited users")
 
     first_slot = None
     for week in range(recurrence_weeks):
@@ -252,7 +252,7 @@ def delete_group_meeting(
 ):
     meeting = session.get(GroupMeeting, meeting_id)
     if not meeting or meeting.owner_id != owner.user_id:
-        raise HTTPException(404, "Meeting not found")
+        raise ResourceNotFoundError("Meeting not found")
     
     session.delete(meeting)
     session.commit()

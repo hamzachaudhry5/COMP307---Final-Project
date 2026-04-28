@@ -1,12 +1,14 @@
 from typing import List
 
-from fastapi import HTTPException
 from sqlmodel import Session, select
 from sqlalchemy import func
 
+from exceptions import ResourceNotFoundError, ValidationFailedError, ConflictError
 from models.slots import BookingSlot, SlotStatus
 from models.reservations import Reservation
 from models.mailto import MailtoResponse, build_mailto
+from models.users import User
+from utils import check_reservation_overlap
 from models.users import User
 from utils import check_reservation_overlap
 
@@ -17,11 +19,11 @@ def reserve_slot(
 ) -> MailtoResponse:
     slot = session.get(BookingSlot, slot_id)
     if not slot:
-        raise HTTPException(404, "Slot not found")
+        raise ResourceNotFoundError("Slot not found")
     if slot.status != SlotStatus.ACTIVE:
-        raise HTTPException(400, "Only ACTIVE slots can be reserved")
+        raise ValidationFailedError("Only ACTIVE slots can be reserved")
     if slot.owner_id == user.user_id:
-        raise HTTPException(400, "Owners cannot reserve their own slots")
+        raise ValidationFailedError("Owners cannot reserve their own slots")
     
     # Check if slot is full
     current_reservations_count = session.exec(
@@ -31,7 +33,7 @@ def reserve_slot(
     ).one()
 
     if slot.max_participants is not None and current_reservations_count >= slot.max_participants:
-        raise HTTPException(409, "This slot is full")
+        raise ConflictError("This slot is full")
 
     # Prevent duplicate reservations by the SAME user
     duplicate_check = session.exec(
@@ -41,7 +43,7 @@ def reserve_slot(
         )
     ).first()
     if duplicate_check:
-        raise HTTPException(400, "You have already reserved this slot")
+        raise ValidationFailedError("You have already reserved this slot")
 
     # Check booking overlap
     check_reservation_overlap(user_id=user.user_id, start_time=slot.start_time, end_time=slot.end_time, session=session)
@@ -73,7 +75,7 @@ def cancel_reservation(
 ) -> MailtoResponse:
     reservation = session.get(Reservation, reservation_id)
     if not reservation or reservation.user_id != user.user_id:
-        raise HTTPException(404, "Reservation not found")
+        raise ResourceNotFoundError("Reservation not found")
 
     slot = session.get(BookingSlot, reservation.slot_id)
     remaining = session.exec(
