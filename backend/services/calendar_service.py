@@ -1,3 +1,5 @@
+# Sean Xu
+
 import uuid
 from icalendar import Calendar, Event
 from sqlmodel import Session, select

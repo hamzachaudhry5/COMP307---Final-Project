@@ -1,3 +1,5 @@
+# Sean Xu
+
 from typing import Optional, TYPE_CHECKING
 from datetime import datetime
 from enum import Enum
@@ -5,7 +7,9 @@ from zoneinfo import ZoneInfo
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
+    from models.users import User
     from models.reservations import Reservation
+
 
 ### Enums
 class SlotType(str, Enum):

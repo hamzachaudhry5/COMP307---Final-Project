@@ -1,3 +1,5 @@
+// Sean Xu
+
 import { useState } from "react";
 
 function formatSlotRange(startTime, endTime) {

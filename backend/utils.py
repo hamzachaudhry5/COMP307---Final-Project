@@ -1,3 +1,5 @@
+# Sean Xu
+
 from sqlmodel import Session, select
 from exceptions import ConflictError
 from models.slots import BookingSlot, SlotStatus
