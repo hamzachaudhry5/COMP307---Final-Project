@@ -5,10 +5,12 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from sqlmodel import Field, Relationship, SQLModel
 
+from models.slots import BookingSlotRead
+from models.meeting_requests import MeetingRequesterRead
+
 if TYPE_CHECKING:
-    from models.slots import BookingSlot, BookingSlotRead
+    from models.slots import BookingSlot
     from models.users import User
-    from models.meeting_requests import MeetingRequesterRead
 
 ### Reservation 
 class ReservationBase(SQLModel):
@@ -31,8 +33,10 @@ class ReservationRead(SQLModel):
     slot_id: int
     user_id: int
     reserved_at: datetime
-    slot: Optional["BookingSlotRead"] = None
-    user: Optional["MeetingRequesterRead"] = None
+    slot: Optional[BookingSlotRead] = None
+    user: Optional[MeetingRequesterRead] = None
 
     class Config:
         from_attributes = True
+
+ReservationRead.model_rebuild()

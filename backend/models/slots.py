@@ -24,12 +24,6 @@ class SlotStatus(str, Enum):
     FULL = "full"
 
 
-class RequestStatus(str, Enum):
-    PENDING = "pending"
-    ACCEPTED = "accepted"
-    DECLINED = "declined"
-
-
 ### BookingSlot 
 class BookingSlotBase(SQLModel):
     title: str = Field(max_length=200)
