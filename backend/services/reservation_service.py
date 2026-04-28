@@ -9,8 +9,7 @@ from models.reservations import Reservation
 from models.mailto import MailtoResponse, build_mailto
 from models.users import User
 from utils import check_reservation_overlap
-from models.users import User
-from utils import check_reservation_overlap
+
 
 def reserve_slot(
     slot_id: int,
