@@ -3,9 +3,9 @@ import uuid
 from datetime import timedelta, datetime
 from typing import Optional, List
 
-from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from exceptions import ResourceNotFoundError, ValidationFailedError
 from models.slots import (
     BookingSlot,
     BookingSlotBulkCreate,
@@ -25,7 +25,7 @@ def create_slot(
     owner: User,
 ) -> List[BookingSlot]:
     if booking_slot.end_time <= booking_slot.start_time:
-        raise HTTPException(400, "end_time must be after start_time")
+        raise ValidationFailedError("end_time must be after start_time")
 
     recurring_weeks = booking_slot.recurrence_weeks if (booking_slot.is_recurring and booking_slot.recurrence_weeks and booking_slot.recurrence_weeks > 1) else 1
     created_slots = []
@@ -54,13 +54,13 @@ def create_bulk_slots(
     owner: User,
 ) -> List[BookingSlot]:
     if not payload.slots:
-        raise HTTPException(400, "At least one slot is required")
+        raise ValidationFailedError("At least one slot is required")
 
     created_slots: list[BookingSlot] = []
     batch_id = str(uuid.uuid4())
     for slot_data in payload.slots:
         if slot_data.end_time <= slot_data.start_time:
-            raise HTTPException(400, "Each slot end_time must be after start_time")
+            raise ValidationFailedError("Each slot end_time must be after start_time")
 
         recurring_weeks = slot_data.recurrence_weeks if (slot_data.is_recurring and slot_data.recurrence_weeks and slot_data.recurrence_weeks > 1) else 1
         for week in range(recurring_weeks):
@@ -97,7 +97,7 @@ def activate_slot(
     slot = _get_owned_slot(slot_id, owner, session)
 
     if slot.status != SlotStatus.PRIVATE:
-        raise HTTPException(400, "Only PRIVATE slots can be activated")
+        raise ValidationFailedError("Only PRIVATE slots can be activated")
     
     check_slot_overlap( 
         owner_id=owner.user_id,
@@ -117,7 +117,7 @@ def activate_batch(batch_id: str, session: Session, owner: User) -> List[Booking
         select(BookingSlot).where(BookingSlot.batch_id == batch_id, BookingSlot.owner_id == owner.user_id)
     ).all()
     if not slots:
-        raise HTTPException(404, "Batch not found")
+        raise ResourceNotFoundError("Batch not found")
     
     for slot in slots:
         if slot.status == SlotStatus.PRIVATE:
@@ -141,7 +141,7 @@ def deactivate_slot(
         select(Reservation).where(Reservation.slot_id == slot.id)
     ).first()
     if has_reservations:
-        raise HTTPException(400, "Cannot deactivate a slot with existing reservations. Delete it instead to notify bookers.")
+        raise ValidationFailedError("Cannot deactivate a slot with existing reservations. Delete it instead to notify bookers.")
 
     slot.status = SlotStatus.PRIVATE
     session.commit()
@@ -153,17 +153,17 @@ def deactivate_batch(batch_id: str, session: Session, owner: User) -> List[Booki
         select(BookingSlot).where(BookingSlot.batch_id == batch_id, BookingSlot.owner_id == owner.user_id)
     ).all()
     if not slots:
-        raise HTTPException(404, "Batch not found")
+        raise ResourceNotFoundError("Batch not found")
     
     for slot in slots:
         if slot.status == SlotStatus.FULL:
-            raise HTTPException(400, f"Slot '{slot.title}' on {slot.start_time.strftime('%B %d at %H:%M')} has reservations. Delete the batch instead to notify bookers.")
+            raise ValidationFailedError(f"Slot '{slot.title}' on {slot.start_time.strftime('%B %d at %H:%M')} has reservations. Delete the batch instead to notify bookers.")
         elif slot.status == SlotStatus.ACTIVE:
             has_reservations = session.exec(
                 select(Reservation).where(Reservation.slot_id == slot.id)
             ).first()
             if has_reservations:
-                raise HTTPException(400, f"Slot '{slot.title}' on {slot.start_time.strftime('%B %d at %H:%M')} has reservations. Delete the batch instead to notify bookers.")
+                raise ValidationFailedError(f"Slot '{slot.title}' on {slot.start_time.strftime('%B %d at %H:%M')} has reservations. Delete the batch instead to notify bookers.")
             
     for slot in slots:
         slot.status = SlotStatus.PRIVATE
@@ -210,13 +210,13 @@ def update_slot(
         select(Reservation).where(Reservation.slot_id == slot.id)
     ).first()
     if has_reservations:
-        raise HTTPException(400, "Cannot edit a slot that already has reservations")
+        raise ValidationFailedError("Cannot edit a slot that already has reservations")
 
     for field, value in booking_slot.model_dump(exclude_unset=True).items():
         setattr(slot, field, value)
 
     if slot.end_time <= slot.start_time:
-        raise HTTPException(400, "end_time must be after start_time")
+        raise ValidationFailedError("end_time must be after start_time")
     
     if slot.status == SlotStatus.ACTIVE:
         check_slot_overlap(
@@ -276,7 +276,7 @@ def delete_batch(batch_id: str, session: Session, owner: User) -> Optional[Mailt
         select(BookingSlot).where(BookingSlot.batch_id == batch_id, BookingSlot.owner_id == owner.user_id)
     ).all()
     if not slots:
-        raise HTTPException(404, "Batch not found")
+        raise ResourceNotFoundError("Batch not found")
     
     slot_ids = [slot.id for slot in slots]
     emails_result = session.exec(
@@ -321,10 +321,10 @@ def get_slots_by_invite(
         select(User).where(User.invite_token == token, User.role == UserRole.owner)
     ).first()
     if not owner:
-        raise HTTPException(404, "Invalid or expired invite link")
+        raise ResourceNotFoundError("Invalid or expired invite link")
 
     if owner.user_id == current_user.user_id:
-        raise HTTPException(400, "You cannot book your own slots via invite link")
+        raise ValidationFailedError("You cannot book your own slots via invite link")
 
     return session.exec(
         select(BookingSlot)
@@ -373,11 +373,11 @@ def get_owner_active_slots(
     current_user: User,
 ) -> List[BookingSlot]:
     if owner_id == current_user.user_id:
-        raise HTTPException(400, "You cannot book your own slots")
+        raise ValidationFailedError("You cannot book your own slots")
 
     owner = session.get(User, owner_id)
     if not owner or owner.role != UserRole.owner:
-        raise HTTPException(404, "Owner not found")
+        raise ResourceNotFoundError("Owner not found")
 
     return session.exec(
         select(BookingSlot)
@@ -390,7 +390,7 @@ def get_owner_active_slots(
 def _get_owned_slot(slot_id: int, owner: User, session: Session) -> BookingSlot:
     slot = session.get(BookingSlot, slot_id)
     if not slot or slot.owner_id != owner.user_id:
-        raise HTTPException(404, "Slot not found")
+        raise ResourceNotFoundError("Slot not found")
     return slot
 
 def _invite_url(token: str) -> str:

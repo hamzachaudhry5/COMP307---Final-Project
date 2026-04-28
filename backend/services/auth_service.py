@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
 from typing import List
 
-from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
-from models.users import User, UserCreate, RefreshToken
+from exceptions import UnauthenticatedError, ValidationFailedError
+from models.users import User, UserCreate, Token, RefreshToken
 from security import (
     hash_password, 
     verify_password, 
@@ -19,7 +19,7 @@ from security import (
 def register_user(user_in: UserCreate, db: Session) -> User:
     existing = db.exec(select(User).where(User.email == user_in.email)).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered.")
+        raise ValidationFailedError("Email already registered.")
 
     user = User(
         email=user_in.email,
@@ -36,9 +36,8 @@ def register_user(user_in: UserCreate, db: Session) -> User:
 def login_user(form_data: OAuth2PasswordRequestForm, db: Session) -> dict:
     user = db.exec(select(User).where(User.email == form_data.username)).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password.",
+        raise UnauthenticatedError(
+            "Invalid email or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -64,17 +63,15 @@ def refresh_token_service(refresh_token: str, db: Session) -> dict:
     # Verify the refresh token
     payload = verify_refresh_token(refresh_token)
     if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
+        raise UnauthenticatedError(
+            "Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
     email = payload.get("sub")
     if not email:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token payload",
+        raise UnauthenticatedError(
+            "Invalid refresh token payload",
         )
     
     # Check if refresh token exists in database and is not revoked
@@ -86,23 +83,20 @@ def refresh_token_service(refresh_token: str, db: Session) -> dict:
     ).first()
     
     if not stored_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token not found or revoked",
+        raise UnauthenticatedError(
+            "Refresh token not found or revoked",
         )
     
     if stored_token.expires_at < datetime.utcnow():
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token has expired",
+        raise UnauthenticatedError(
+            "Refresh token has expired",
         )
     
     # Get user
     user = db.exec(select(User).where(User.email == email)).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+        raise UnauthenticatedError(
+            "User not found",
         )
     
     # Generate new access token
@@ -111,7 +105,7 @@ def refresh_token_service(refresh_token: str, db: Session) -> dict:
         data={"sub": user.email}, expires_delta=access_token_expires
     )
     
-    # Optionally rotate refresh token (generate new one and revoke old)
+    # Rotate refresh token (generate new one and revoke old)
     new_refresh_token = create_refresh_token(data={"sub": user.email})
     
     # Revoke old refresh token

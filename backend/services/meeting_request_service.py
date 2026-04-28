@@ -1,8 +1,8 @@
 from typing import List
 
-from fastapi import HTTPException
 from sqlmodel import Session, select
 
+from exceptions import ResourceNotFoundError, ValidationFailedError
 from models.slots import BookingSlot, SlotStatus, SlotType
 from models.mailto import MailtoResponse, build_mailto
 from models.users import User, UserRole
@@ -17,13 +17,13 @@ def send_request(
 ) -> MailtoResponse:
     owner = session.get(User, meeting_request.owner_id)
     if not owner:
-        raise HTTPException(404, "Owner not found")
+        raise ResourceNotFoundError("Owner not found")
     if owner.role != UserRole.owner:
-        raise HTTPException(400, "Meeting requests can only be sent to owners")
+        raise ValidationFailedError("Meeting requests can only be sent to owners")
     if owner.user_id == user.user_id:
-        raise HTTPException(400, "Cannot send a meeting request to yourself")
+        raise ValidationFailedError("Cannot send a meeting request to yourself")
     if meeting_request.end_time <= meeting_request.start_time:
-        raise HTTPException(400, "end_time must be after start_time")
+        raise ValidationFailedError("end_time must be after start_time")
     
     check_reservation_overlap(user_id=user.user_id, start_time=meeting_request.start_time, end_time=meeting_request.end_time, session=session)
 
@@ -134,7 +134,7 @@ def _get_owned_request(
 ) -> MeetingRequest:
     req = session.get(MeetingRequest, request_id)
     if not req or req.owner_id != owner.user_id:
-        raise HTTPException(404, "Request not found")
+        raise ResourceNotFoundError("Request not found")
     if req.status != RequestStatus.PENDING:
-        raise HTTPException(400, f"Request has already been {req.status.value}")
+        raise ValidationFailedError(f"Request has already been {req.status.value}")
     return req
