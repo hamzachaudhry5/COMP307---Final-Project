@@ -9,10 +9,6 @@ from models.users import User, UserRole
 from models.reservations import Reservation
 from models.meeting_requests import MeetingRequest, MeetingRequestCreate, RequestStatus
 from utils import check_reservation_overlap
-from models.users import User, UserRole
-from models.reservations import Reservation
-from models.meeting_requests import MeetingRequest, MeetingRequestCreate, RequestStatus
-from utils import check_reservation_overlap
 
 def send_request(
     meeting_request: MeetingRequestCreate,
