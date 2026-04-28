@@ -383,7 +383,7 @@
     margin-left: auto;
   }
 
-  .delete-button, .secondary-button {
+  .secondary-button {
     padding: 4px 8px;
     font-size: 0.8rem;
     line-height: 1.1;
@@ -392,6 +392,27 @@
     flex-shrink: 2;
     overflow-wrap: anywhere;
   }
+
+  .delete-button {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    line-height: 1.1;
+    border-radius: 10px;
+    max-width: 120px;
+    flex-shrink: 2;
+    overflow-wrap: anywhere;
+  }
+
+  .invite-button, .delete-all-button {
+    padding: 10px 14px;
+    font-size: 0.8rem;
+    line-height: 1.1;
+    border-radius: 10px;
+    max-width: 120px;
+    flex-shrink: 2;
+    overflow-wrap: anywhere;
+  }
+
   .request-actions button {
     padding: 6px 8px;
     font-size: 0.8rem;
