@@ -145,3 +145,21 @@
   border-radius: 12px;
   font-size: 1rem;
 }
+
+@media (max-width: 768px) {
+  .toggle-slider {
+    width: 42px;
+    height: 24px;
+  }
+
+  .toggle-slider::before {
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .visibility-toggle input:checked + .toggle-slider::before {
+    transform: translateX(18px);
+  }
+}
