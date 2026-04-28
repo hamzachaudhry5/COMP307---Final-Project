@@ -227,6 +227,20 @@
 
 @media (max-width: 768px) {
 
+  .slots-header h3 {
+    font-size: clamp(1.8rem, 8vw, 2.4rem);
+    line-height: 1.1;
+  }
+
+  .booking-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid #cbd5e1;
+  }
+
   .dash-header {
     padding: 5px;
   }
